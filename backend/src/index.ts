@@ -4,6 +4,7 @@ import "dotenv/config";
 
 import { authRouter } from "./routes/auth.routes.js";
 import { eventRouter } from "./routes/event.routes.js";
+import { reservationRouter } from "./routes/reservation.routes.js";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -19,6 +20,7 @@ app.get("/", (_req, res) => {
 
 app.use("/auth", authRouter);
 app.use("/events", eventRouter);
+app.use("/reservations", reservationRouter);
 
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
