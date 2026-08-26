@@ -16,4 +16,4 @@ dist/
 Thumbs.db
 
 # Prisma generated client
-backend/generated/
+backend/src/generated/
