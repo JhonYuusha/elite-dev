@@ -142,3 +142,33 @@ export async function createEvent(req: Request, res: Response) {
 
   return res.status(201).json(event);
 }
+export async function listOrganizerEvents(req: Request, res: Response) {
+  if (!req.user) {
+    return res.status(401).json({
+      message: "Usuário não autenticado.",
+    });
+  }
+
+  const events = await prisma.event.findMany({
+    where: {
+      organizerId: req.user.id,
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+    select: {
+      id: true,
+      title: true,
+      imageUrl: true,
+      startsAt: true,
+      venueName: true,
+      capacity: true,
+      availableTickets: true,
+      priceCents: true,
+      status: true,
+      createdAt: true,
+    },
+  });
+
+  return res.json(events);
+}
