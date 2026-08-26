@@ -1,0 +1,135 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  ORGANIZER
+  CLIENT
+  GATEKEEPER
+}
+
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  CANCELLED
+}
+
+enum ReservationStatus {
+  PENDING
+  PAID
+  PAYMENT_FAILED
+  CANCELLED
+}
+
+enum TicketStatus {
+  VALID
+  USED
+  CANCELLED
+}
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         UserRole
+
+  organizedEvents  Event[]
+  reservations     Reservation[]
+  ownedTickets     Ticket[]      @relation("TicketOwner")
+  validatedTickets Ticket[]      @relation("TicketValidator")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Event {
+  id String @id @default(uuid())
+
+  organizerId String
+  organizer   User   @relation(fields: [organizerId], references: [id])
+
+  externalProvider String
+  externalId       String
+
+  title       String
+  description String?
+  imageUrl    String?
+
+  startsAt DateTime
+
+  venueName    String
+  venueAddress String?
+
+  capacity         Int
+  availableTickets Int
+
+  priceCents Int
+
+  status EventStatus @default(DRAFT)
+
+  reservations Reservation[]
+  tickets      Ticket[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([startsAt])
+  @@index([externalProvider, externalId])
+}
+
+model Reservation {
+  id String @id @default(uuid())
+
+  clientId String
+  client   User   @relation(fields: [clientId], references: [id])
+
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id])
+
+  quantity   Int
+  totalCents Int
+
+  status ReservationStatus @default(PENDING)
+
+  tickets Ticket[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clientId])
+  @@index([eventId])
+}
+
+model Ticket {
+  id String @id @default(uuid())
+
+  reservationId String
+  reservation   Reservation @relation(fields: [reservationId], references: [id])
+
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id])
+
+  ownerId String
+  owner   User   @relation("TicketOwner", fields: [ownerId], references: [id])
+
+  status TicketStatus @default(VALID)
+
+  shareToken String? @unique
+
+  validatedAt DateTime?
+
+  validatedById String?
+  validatedBy   User?   @relation("TicketValidator", fields: [validatedById], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([eventId])
+  @@index([ownerId])
+}
