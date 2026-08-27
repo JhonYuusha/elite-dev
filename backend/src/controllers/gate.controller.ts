@@ -25,35 +25,44 @@ export async function validateTicket(req: Request, res: Response) {
     });
   }
 
+  const cleanCode = String(code).trim();
+
   const secret = process.env.JWT_SECRET;
 
   if (!secret) {
     throw new Error("JWT_SECRET não definida.");
   }
 
-  let payload: TicketPayload;
+  let ticketId: string;
+  let tokenEventId: string | null = null;
 
+  // Primeiro tenta interpretar como QR assinado.
   try {
-    payload = jwt.verify(code, secret) as TicketPayload;
+    const payload = jwt.verify(
+      cleanCode,
+      secret,
+    ) as TicketPayload;
+
+    if (
+      payload.type !== "TICKET" ||
+      !payload.ticketId ||
+      !payload.eventId
+    ) {
+      return res.status(400).json({
+        status: "INVALID",
+        message: "Ingresso inválido.",
+      });
+    }
+
+    ticketId = payload.ticketId;
+    tokenEventId = payload.eventId;
   } catch {
-    return res.status(400).json({
-      status: "INVALID",
-      message: "Ingresso inválido.",
-    });
+    // Se não for JWT, tratamos como código manual:
+    // o ID completo do ingresso.
+    ticketId = cleanCode;
   }
 
-  if (
-    payload.type !== "TICKET" ||
-    !payload.ticketId ||
-    !payload.eventId
-  ) {
-    return res.status(400).json({
-      status: "INVALID",
-      message: "Ingresso inválido.",
-    });
-  }
-
-  if (payload.eventId !== eventId) {
+  if (tokenEventId && tokenEventId !== eventId) {
     return res.status(409).json({
       status: "WRONG_EVENT",
       message: "Este ingresso pertence a outro evento.",
@@ -62,14 +71,14 @@ export async function validateTicket(req: Request, res: Response) {
 
   const ticket = await prisma.ticket.findUnique({
     where: {
-      id: payload.ticketId,
+      id: ticketId,
     },
   });
 
   if (!ticket) {
     return res.status(400).json({
       status: "INVALID",
-      message: "Ingresso não encontrado.",
+      message: "Ingresso não encontrado ou código inválido.",
     });
   }
 

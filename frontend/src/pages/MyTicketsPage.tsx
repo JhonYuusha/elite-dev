@@ -47,7 +47,9 @@ export function MyTicketsPage() {
 
   const [tickets, setTickets] = useState<TicketWithQr[]>([]);
   const [loading, setLoading] = useState(true);
-  const [copiedTicket, setCopiedTicket] = useState<string | null>(null);
+
+  const [copiedShare, setCopiedShare] = useState<string | null>(null);
+  const [copiedManualCode, setCopiedManualCode] = useState<string | null>(null);
 
   const paymentApproved =
     (location.state as { paymentApproved?: boolean } | null)
@@ -71,6 +73,7 @@ export function MyTicketsPage() {
         const withQr = await Promise.all(
           data.map(async (ticket) => ({
             ...ticket,
+
             qrImage: await QRCode.toDataURL(ticket.qrCode, {
               width: 280,
               margin: 1,
@@ -97,10 +100,20 @@ export function MyTicketsPage() {
 
     await navigator.clipboard.writeText(url);
 
-    setCopiedTicket(ticket.id);
+    setCopiedShare(ticket.id);
 
     window.setTimeout(() => {
-      setCopiedTicket(null);
+      setCopiedShare(null);
+    }, 2000);
+  }
+
+  async function copyManualCode(ticket: Ticket) {
+    await navigator.clipboard.writeText(ticket.id);
+
+    setCopiedManualCode(ticket.id);
+
+    window.setTimeout(() => {
+      setCopiedManualCode(null);
     }, 2000);
   }
 
@@ -125,13 +138,22 @@ export function MyTicketsPage() {
       </header>
 
       <section className="tickets-heading">
-        <p className="eyebrow">CARTEIRA / CLIENTE</p>
+        <p className="eyebrow">
+          CARTEIRA / CLIENTE
+        </p>
 
-        <h1>MEUS<br />INGRESSOS</h1>
+        <h1>
+          MEUS
+          <br />
+          INGRESSOS
+        </h1>
 
         {paymentApproved && (
           <div className="payment-success">
-            <strong>PAGAMENTO APROVADO ✓</strong>
+            <strong>
+              PAGAMENTO APROVADO ✓
+            </strong>
+
             <span>
               Seus ingressos já estão disponíveis abaixo.
             </span>
@@ -141,7 +163,9 @@ export function MyTicketsPage() {
 
       {tickets.length === 0 ? (
         <section className="empty-tickets">
-          <p>VOCÊ AINDA NÃO POSSUI INGRESSOS</p>
+          <p>
+            VOCÊ AINDA NÃO POSSUI INGRESSOS
+          </p>
 
           <Link to="/">
             VER PROGRAMAÇÃO →
@@ -160,18 +184,27 @@ export function MyTicketsPage() {
                     ELITE / ADMISSÃO
                   </span>
 
-                  <h2>{ticket.event.title}</h2>
+                  <h2>
+                    {ticket.event.title}
+                  </h2>
 
                   <p className="ticket-date">
                     {formatDate(ticket.event.startsAt)}
                   </p>
 
                   <div className="ticket-place">
-                    <span>LOCAL</span>
-                    <strong>{ticket.event.venueName}</strong>
+                    <span>
+                      LOCAL
+                    </span>
+
+                    <strong>
+                      {ticket.event.venueName}
+                    </strong>
 
                     {ticket.event.venueAddress && (
-                      <p>{ticket.event.venueAddress}</p>
+                      <p>
+                        {ticket.event.venueAddress}
+                      </p>
                     )}
                   </div>
                 </div>
@@ -193,15 +226,30 @@ export function MyTicketsPage() {
                   {ticket.id.slice(0, 8).toUpperCase()}
                 </span>
 
+                <small className="ticket-code-help">
+                  Código visual
+                </small>
+
                 {ticket.status === "VALID" && (
-                  <button
-                    type="button"
-                    onClick={() => shareTicket(ticket)}
-                  >
-                    {copiedTicket === ticket.id
-                      ? "LINK COPIADO ✓"
-                      : "COMPARTILHAR ↗"}
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => copyManualCode(ticket)}
+                    >
+                      {copiedManualCode === ticket.id
+                        ? "CÓDIGO MANUAL COPIADO ✓"
+                        : "COPIAR CÓDIGO PARA PORTARIA"}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => shareTicket(ticket)}
+                    >
+                      {copiedShare === ticket.id
+                        ? "LINK COPIADO ✓"
+                        : "COMPARTILHAR INGRESSO ↗"}
+                    </button>
+                  </>
                 )}
               </div>
             </article>

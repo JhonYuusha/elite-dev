@@ -6,6 +6,8 @@ import { LoginPage } from "./pages/LoginPage";
 import { EventDetailsPage } from "./pages/EventDetailsPage";
 import { CheckoutPage } from "./pages/CheckoutPage";
 import { MyTicketsPage } from "./pages/MyTicketsPage";
+import { SharedTicketPage } from "./pages/SharedTicketPage";
+import { GatePage } from "./pages/GatePage";
 
 function Placeholder({ title }: { title: string }) {
   return (
@@ -39,7 +41,7 @@ function App() {
 
           <Route
             path="/gate"
-            element={<Placeholder title="Portaria" />}
+            element={<GatePage />}
           />
 
           <Route path="*" element={<Navigate to="/" replace />} />
@@ -47,6 +49,10 @@ function App() {
           <Route 
           path="/checkout/:id" 
           element={<CheckoutPage />} />
+
+          <Route
+          path="/shared/:token"
+          element={<SharedTicketPage />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>
