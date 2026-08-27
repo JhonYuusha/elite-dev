@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 
 import { useAuth } from "../context/AuthContext";
@@ -7,21 +7,25 @@ import type { UserRole } from "../types/auth";
 
 const testAccounts: Array<{
   label: string;
+  description: string;
   email: string;
   role: UserRole;
 }> = [
   {
     label: "Cliente",
+    description: "Navega, reserva, paga e acessa os ingressos.",
     email: "cliente1@elitedev.test",
     role: "CLIENT",
   },
   {
     label: "Organizador",
+    description: "Busca no catálogo TMDb e publica sessões.",
     email: "organizer@elitedev.test",
     role: "ORGANIZER",
   },
   {
     label: "Portaria",
+    description: "Valida ingressos na entrada do evento.",
     email: "portaria@elitedev.test",
     role: "GATEKEEPER",
   },
@@ -62,10 +66,10 @@ export function LoginPage() {
       }
 
       navigate("/");
-    } catch (error) {
-      if (axios.isAxiosError(error)) {
+    } catch (requestError) {
+      if (axios.isAxiosError(requestError)) {
         setError(
-          error.response?.data?.message ??
+          requestError.response?.data?.message ??
             "Não foi possível entrar na plataforma.",
         );
       } else {
@@ -77,58 +81,108 @@ export function LoginPage() {
   }
 
   return (
-    <main>
-      <section>
-        <p>ELITE / TICKETS</p>
+    <main className="login-page">
+      <header className="login-header">
+        <Link to="/" className="brand">
+          ELITE<span>/TICKETS</span>
+        </Link>
 
-        <h1>Seu próximo evento começa aqui.</h1>
+        <Link to="/" className="back-link">
+          ← PROGRAMAÇÃO
+        </Link>
+      </header>
 
-        <p>
-          Entre como cliente, organizador ou portaria para percorrer os
-          diferentes fluxos da plataforma.
-        </p>
+      <section className="login-layout">
+        <div className="login-intro">
+          <p className="eyebrow">ACESSO / PLATAFORMA</p>
 
-        <div>
-          {testAccounts.map((account) => (
-            <button
-              key={account.email}
-              type="button"
-              onClick={() => selectAccount(account.email)}
-            >
-              {account.label}
-            </button>
-          ))}
+          <h1>
+            ESCOLHA
+            <br />
+            SEU PAPEL.
+          </h1>
+
+          <p>
+            O sistema possui três experiências diferentes. Use uma das contas
+            demonstrativas para percorrer o fluxo que deseja avaliar.
+          </p>
+
+          <div className="account-options">
+            {testAccounts.map((account) => (
+              <button
+                key={account.email}
+                type="button"
+                className={
+                  email === account.email
+                    ? "account-option account-option-active"
+                    : "account-option"
+                }
+                onClick={() => selectAccount(account.email)}
+              >
+                <div>
+                  <span>{account.label}</span>
+                  <strong>{account.description}</strong>
+                </div>
+
+                <span>→</span>
+              </button>
+            ))}
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit}>
-          <label>
-            E-mail
-            <input
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-            />
-          </label>
+        <div className="login-panel">
+          <div className="login-panel-heading">
+            <span>IDENTIFICAÇÃO</span>
+            <strong>Entrar na plataforma</strong>
+          </div>
 
-          <label>
-            Senha
-            <input
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-            />
-          </label>
+          <form onSubmit={handleSubmit}>
+            <label className="login-field">
+              <span>E-MAIL</span>
 
-          {error && <p role="alert">{error}</p>}
+              <input
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                autoComplete="email"
+              />
+            </label>
 
-          <button type="submit" disabled={loading}>
-            {loading ? "Entrando..." : "Entrar"}
-          </button>
-        </form>
+            <label className="login-field">
+              <span>SENHA</span>
 
-        <small>
-          Contas demonstrativas disponíveis para facilitar a avaliação.
-        </small>
+              <input
+                type="password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                autoComplete="current-password"
+              />
+            </label>
+
+            {error && (
+              <p className="login-error" role="alert">
+                {error}
+              </p>
+            )}
+
+            <button
+              className="login-submit"
+              type="submit"
+              disabled={loading}
+            >
+              <span>{loading ? "ENTRANDO..." : "ENTRAR"}</span>
+              <span>→</span>
+            </button>
+          </form>
+
+          <div className="demo-note">
+            <span>AMBIENTE DE DEMONSTRAÇÃO</span>
+            <p>
+              As contas já estão preenchidas com dados de teste para facilitar a
+              avaliação.
+            </p>
+          </div>
+        </div>
       </section>
     </main>
   );
