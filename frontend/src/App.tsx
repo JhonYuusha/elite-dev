@@ -1,7 +1,11 @@
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes,} from "react-router-dom";
 
 import { AuthProvider } from "./context/AuthContext";
+import { HomePage } from "./pages/HomePage";
 import { LoginPage } from "./pages/LoginPage";
+import { EventDetailsPage } from "./pages/EventDetailsPage";
+import { CheckoutPage } from "./pages/CheckoutPage";
+import { MyTicketsPage } from "./pages/MyTicketsPage";
 
 function Placeholder({ title }: { title: string }) {
   return (
@@ -16,12 +20,17 @@ function App() {
     <BrowserRouter>
       <AuthProvider>
         <Routes>
+          <Route path="/" element={<HomePage />} />
+
           <Route path="/login" element={<LoginPage />} />
 
-          <Route
-            path="/"
-            element={<Placeholder title="Eventos em cartaz" />}
-          />
+          <Route 
+          path="/events/:id" 
+          element={<EventDetailsPage />} />
+
+          <Route 
+          path="/tickets" 
+          element={<MyTicketsPage />} />
 
           <Route
             path="/organizer"
@@ -34,6 +43,10 @@ function App() {
           />
 
           <Route path="*" element={<Navigate to="/" replace />} />
+
+          <Route 
+          path="/checkout/:id" 
+          element={<CheckoutPage />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>
