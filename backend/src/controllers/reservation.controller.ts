@@ -93,3 +93,44 @@ export async function createReservation(req: Request, res: Response) {
     throw error;
   }
 }
+
+export async function getReservationById(
+  req: Request<{ id: string }>,
+  res: Response,
+) {
+  if (!req.user) {
+    return res.status(401).json({
+      message: "Usuário não autenticado.",
+    });
+  }
+
+  const { id } = req.params;
+
+  const reservation = await prisma.reservation.findFirst({
+    where: {
+      id,
+      clientId: req.user.id,
+    },
+    include: {
+      event: {
+        select: {
+          id: true,
+          title: true,
+          imageUrl: true,
+          startsAt: true,
+          venueName: true,
+          venueAddress: true,
+          priceCents: true,
+        },
+      },
+    },
+  });
+
+  if (!reservation) {
+    return res.status(404).json({
+      message: "Reserva não encontrada.",
+    });
+  }
+
+  return res.json(reservation);
+}
