@@ -23,44 +23,29 @@ A aplicação implementa três perfis distintos --- ****Organizador****, ****C
 
 ## Sumário
 
-- \[Visão geral\](#visão-geral)
-
-- \[Funcionalidades\](#funcionalidades)
-
-- \[Opcionais do desafio\](#opcionais-do-desafio)
-
-- \[Tecnologias\](#tecnologias)
-
-- \[Arquitetura\](#arquitetura)
-
-- \[Modelagem de dados\](#modelagem-de-dados)
-
-- \[Decisões técnicas\](#decisões-técnicas)
-
-- \[Segurança e integridade\](#segurança-e-integridade)
-
-- \[Pré-requisitos\](#pré-requisitos)
-
-- \[Configuração do projeto\](#configuração-do-projeto)
-
-- \[Banco de dados\](#banco-de-dados)
-
-- \[Variáveis de ambiente\](#variáveis-de-ambiente)
-
-- \[Seed e usuários de teste\](#seed-e-usuários-de-teste)
-
-- \[Como executar\](#como-executar)
-
-- \[Fluxos para avaliação\](#fluxos-para-avaliação)
-
-- \[Build e validação\](#build-e-validação)
-
-- \[Limitações e itens não implementados\](#limitações-e-itens-não-implementados)
-
-- \[Uso de Inteligência Artificial\](#uso-de-inteligência-artificial)
-
-- \[Referências\](#referências)
-
+- [Demo em produção](#demo-em-produção)
+- [Visão geral](#visão-geral)
+- [Funcionalidades](#funcionalidades)
+- [Opcionais do desafio](#opcionais-do-desafio)
+- [Tecnologias](#tecnologias)
+- [Arquitetura](#arquitetura)
+- [Modelagem de dados](#modelagem-de-dados)
+- [Decisões técnicas](#decisões-técnicas)
+- [Segurança e integridade](#segurança-e-integridade)
+- [Pré-requisitos](#pré-requisitos)
+- [Configuração do projeto](#configuração-do-projeto)
+- [Banco de dados](#banco-de-dados)
+- [Variáveis de ambiente](#variáveis-de-ambiente)
+- [Seed e usuários de teste](#seed-e-usuários-de-teste)
+- [Como executar](#como-executar)
+- [Fluxos para avaliação](#fluxos-para-avaliação)
+- [Roteiro de testes manuais](#roteiro-de-testes-manuais)
+- [Build e validação](#build-e-validação)
+- [Deploy](#deploy)
+- [Limitações e itens não implementados](#limitações-e-itens-não-implementados)
+- [Uso de Inteligência Artificial](#uso-de-inteligência-artificial)
+- [Referências](#referências)
+- [Autor](#autor)
 ------------------------------------------------------------------------
 
 ## Visão geral
