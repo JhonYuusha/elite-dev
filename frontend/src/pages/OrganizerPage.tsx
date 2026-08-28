@@ -62,6 +62,16 @@ function formatDate(value: string) {
     .toUpperCase();
 }
 
+function getMinDateTimeLocal() {
+  const now = new Date();
+
+  const localNow = new Date(
+    now.getTime() - now.getTimezoneOffset() * 60_000,
+  );
+
+  return localNow.toISOString().slice(0, 16);
+}
+
 export function OrganizerPage() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
@@ -203,6 +213,19 @@ export function OrganizerPage() {
       return;
     }
 
+    const parsedStartsAt = new Date(startsAt);
+
+    if (
+      Number.isNaN(parsedStartsAt.getTime()) ||
+      parsedStartsAt <= new Date()
+    ) {
+      setFormError(
+        "Escolha uma data e horário futuros para a sessão.",
+      );
+
+      return;
+    }
+
     const normalizedPrice = Number(
       price.replace(".", "").replace(",", "."),
     );
@@ -227,9 +250,7 @@ export function OrganizerPage() {
           "/events",
           {
             externalId: selectedMovie.externalId,
-            startsAt: new Date(
-              startsAt,
-            ).toISOString(),
+            startsAt: parsedStartsAt.toISOString(),
             venueName: venueName.trim(),
             venueAddress: venueAddress.trim(),
             capacity,
@@ -623,6 +644,7 @@ export function OrganizerPage() {
               <input
                 type="datetime-local"
                 value={startsAt}
+                min={getMinDateTimeLocal()}
                 onChange={(event) =>
                   setStartsAt(
                     event.target.value,
