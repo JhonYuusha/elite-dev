@@ -4,8 +4,7 @@ Projeto desenvolvido para o **Desafio Técnico Elite Dev / Verzel**, com foco em
 
 A aplicação implementa três perfis distintos — **Organizador**, **Cliente** e **Portaria** — e cobre o fluxo principal de ponta a ponta: criação de sessão a partir de um catálogo externo, reserva de ingressos, pagamento simulado, emissão de QR Code, compartilhamento do ingresso e validação na entrada.
 
-------------------------------------------------------------------------
-
+---
 ## Demo em produção
 
 - **Frontend:** <https://elite-dev-mocha.vercel.app/>
@@ -13,14 +12,7 @@ A aplicação implementa três perfis distintos — **Organizador**, **Cliente**
 
 > O backend utiliza infraestrutura gratuita no Render. A primeira requisição após um período de inatividade pode apresentar uma inicialização mais lenta.
 
-------------------------------------------------------------------------
-
-Projeto desenvolvido para o ****Desafio Técnico Elite Dev / Verzel****, com foco em uma plataforma de criação, venda, compartilhamento e validação de ingressos para eventos.
-
-A aplicação implementa três perfis distintos --- ****Organizador****, ****Cliente**** e ****Portaria**** --- e cobre o fluxo principal de ponta a ponta: criação de sessão a partir de um catálogo externo, reserva de ingressos, pagamento simulado, emissão de QR Code, compartilhamento do ingresso e validação na entrada.
-
-------------------------------------------------------------------------
-
+---
 ## Sumário
 
 - [Demo em produção](#demo-em-produção)
@@ -46,24 +38,22 @@ A aplicação implementa três perfis distintos --- ****Organizador****, ****C
 - [Uso de Inteligência Artificial](#uso-de-inteligência-artificial)
 - [Referências](#referências)
 - [Autor](#autor)
-------------------------------------------------------------------------
-
+---
 ## Visão geral
 
 A proposta do projeto é representar uma plataforma de eventos com separação clara de responsabilidades:
 
-- ****Organizador:**** busca filmes em um catálogo externo, cria sessões e gerencia informações comerciais.
+- **Organizador:** busca filmes em um catálogo externo, cria sessões e gerencia informações comerciais.
 
-- ****Cliente:**** visualiza eventos publicados, escolhe uma quantidade de ingressos, realiza uma reserva, simula o pagamento e recebe seus ingressos.
+- **Cliente:** visualiza eventos publicados, escolhe uma quantidade de ingressos, realiza uma reserva, simula o pagamento e recebe seus ingressos.
 
-- ****Portaria:**** valida ingressos por QR Code utilizando a câmera ou, como alternativa, por código manual.
+- **Portaria:** valida ingressos por QR Code utilizando a câmera ou, como alternativa, por código manual.
 
-A aplicação utiliza o ****TMDb**** como fonte externa de filmes. O organizador escolhe um filme retornado pela API e então informa os dados específicos da sessão, como data, local, capacidade e preço.
+A aplicação utiliza o **TMDb** como fonte externa de filmes. O organizador escolhe um filme retornado pela API e então informa os dados específicos da sessão, como data, local, capacidade e preço.
 
-*\> O TMDb é utilizado apenas como catálogo externo de conteúdo. Sessões, disponibilidade, reservas, pagamentos simulados e ingressos são entidades próprias da aplicação.*
+> O TMDb é utilizado apenas como catálogo externo de conteúdo. Sessões, disponibilidade, reservas, pagamentos simulados e ingressos são entidades próprias da aplicação.
 
-------------------------------------------------------------------------
-
+---
 ## Funcionalidades
 
 ### Organizador
@@ -144,30 +134,28 @@ A aplicação utiliza o ****TMDb**** como fonte externa de filmes. O organizad
 
 - ingresso pertencente a outro evento.
 
-------------------------------------------------------------------------
-
+---
 ## Opcionais do desafio
 
-\| Item opcional \| Status \| Observação \|
+| Item opcional | Status | Observação |
 
-\| --- \| --- \| --- \|
+| --- | --- | --- |
 
-\| Busca e filtro de eventos \| ✅ Implementado \| Busca disponível na programação \|
+| Busca e filtro de eventos | ✅ Implementado | Busca disponível na programação |
 
-\| Painel do organizador \| ✅ Implementado \| Criação e gerenciamento das próprias sessões \|
+| Painel do organizador | ✅ Implementado | Criação e gerenciamento das próprias sessões |
 
-\| Cancelamento com devolução ao estoque \| ❌ Não implementado \| O fluxo de pagamento recusado devolve o estoque, mas cancelamento posterior de compra não foi implementado \|
+| Cancelamento com devolução ao estoque | ❌ Não implementado | O fluxo de pagamento recusado devolve o estoque, mas cancelamento posterior de compra não foi implementado |
 
-\| Mapa de assentos em tempo real \| ❌ Não implementado \| Foi adotado o modelo de pista/quantidade \|
+| Mapa de assentos em tempo real | ❌ Não implementado | Foi adotado o modelo de pista/quantidade |
 
-\| Docker Compose \| ✅ Implementado \| PostgreSQL local configurado por container \|
+| Docker Compose | ✅ Implementado | PostgreSQL local configurado por container |
 
-\| Testes automatizados \| ❌ Não implementado até o momento \| Os fluxos principais foram validados manualmente \|
+| Testes automatizados | ❌ Não implementado até o momento | Os fluxos principais foram validados manualmente |
 
-\| Aplicação publicada \| ✅ Implementado \| Frontend na Vercel e API/banco no Render \|
+| Aplicação publicada | ✅ Implementado | Frontend na Vercel e API/banco no Render |
 
-------------------------------------------------------------------------
-
+---
 ## Tecnologias
 
 ### Frontend
@@ -216,13 +204,12 @@ A aplicação utiliza o ****TMDb**** como fonte externa de filmes. O organizad
 
 - Render para publicação da API e PostgreSQL em produção
 
-------------------------------------------------------------------------
-
+---
 ## Arquitetura
 
 O projeto está dividido em duas aplicações principais:
 
-``` text
+```text
 
 elite-dev/
 
@@ -281,8 +268,7 @@ O frontend se comunica com o backend através de uma API HTTP. O backend concent
 
 As regras críticas não dependem apenas da interface. Permissões de perfil, controle de estoque e validação de ingresso são aplicados no backend.
 
-------------------------------------------------------------------------
-
+---
 ## Modelagem de dados
 
 As entidades principais são:
@@ -293,7 +279,7 @@ Representa os usuários da plataforma.
 
 Perfis disponíveis:
 
-``` text
+```text
 
 ORGANIZER
 
@@ -336,7 +322,7 @@ Representa uma reserva realizada por um cliente.
 
 Estados utilizados:
 
-``` text
+```text
 
 PENDING
 
@@ -353,7 +339,7 @@ Representa um ingresso emitido após um pagamento aprovado.
 
 Estados utilizados:
 
-``` text
+```text
 
 VALID
 
@@ -364,15 +350,14 @@ CANCELLED
 
 Cada ingresso possui também um token próprio de compartilhamento.
 
-------------------------------------------------------------------------
-
+---
 ## Decisões técnicas
 
 ### Quantidade em vez de mapa de assentos
 
 O desafio permitia tanto um fluxo baseado em assentos quanto um fluxo de pista/setor por quantidade.
 
-Foi escolhido o modelo de ****quantidade****, inspirado em plataformas de eventos nas quais o cliente escolhe quantos ingressos deseja adquirir em um determinado setor.
+Foi escolhido o modelo de **quantidade**, inspirado em plataformas de eventos nas quais o cliente escolhe quantos ingressos deseja adquirir em um determinado setor.
 
 Por isso, não existe uma identidade individual de cadeira na aplicação. A regra equivalente a "não vender o mesmo lugar duas vezes" é garantir que a quantidade vendida nunca ultrapasse a capacidade disponível.
 
@@ -384,7 +369,7 @@ Os preços são persistidos como números inteiros em centavos.
 
 Exemplo:
 
-``` text
+```text
 
 R$ 35,90 -> 3590
 ```
@@ -401,13 +386,13 @@ Ao criar uma sessão, o backend utiliza o identificador do filme e consulta o TM
 
 Foi adicionada uma proteção para impedir que o mesmo organizador publique acidentalmente o mesmo filme no mesmo local em horários extremamente próximos.
 
-Atualmente, a aplicação considera conflitante uma sessão do mesmo filme e local dentro de uma janela aproximada de ****30 minutos****.
+Atualmente, a aplicação considera conflitante uma sessão do mesmo filme e local dentro de uma janela aproximada de **30 minutos**.
 
 Essa é uma regra de produto adotada para evitar duplicidade acidental, e não uma limitação imposta pelo TMDb.
 
 ### Capacidade do evento
 
-Após a publicação, o painel permite ****adicionar capacidade****, mas não reduzir livremente a capacidade total.
+Após a publicação, o painel permite **adicionar capacidade**, mas não reduzir livremente a capacidade total.
 
 Essa escolha evita criar inconsistências quando já existem reservas ou ingressos vendidos.
 
@@ -419,7 +404,7 @@ O checkout não integra um gateway financeiro real.
 
 A API permite simular dois resultados:
 
-``` text
+```text
 
 APPROVED
 
@@ -440,7 +425,7 @@ Quando recusado:
 
 ### Compartilhamento não é validação
 
-O token utilizado na URL pública de compartilhamento ****não é o mesmo dado utilizado para validar a entrada****.
+O token utilizado na URL pública de compartilhamento **não é o mesmo dado utilizado para validar a entrada**.
 
 Isso foi feito propositalmente para separar:
 
@@ -450,8 +435,7 @@ Isso foi feito propositalmente para separar:
 
 Assim, compartilhar a página pública do ingresso não transforma automaticamente aquela URL em uma credencial de entrada.
 
-------------------------------------------------------------------------
-
+---
 ## Segurança e integridade
 
 ### Autenticação
@@ -506,8 +490,7 @@ O controle foi implementado para impedir que requisições concorrentes consigam
 
 O frontend exibe a disponibilidade ao usuário, mas a validação definitiva acontece no backend.
 
-------------------------------------------------------------------------
-
+---
 ## Pré-requisitos
 
 Para executar o projeto localmente:
@@ -524,13 +507,12 @@ Para executar o projeto localmente:
 
 O desenvolvimento foi realizado com Node.js 22.
 
-------------------------------------------------------------------------
-
+---
 ## Configuração do projeto
 
 Clone o repositório:
 
-``` bash
+```bash
 
 git clone <URL-DO-REPOSITORIO>
 
@@ -539,7 +521,7 @@ cd elite-dev
 
 Instale as dependências do backend:
 
-``` bash
+```bash
 
 cd backend
 
@@ -548,18 +530,17 @@ npm install
 
 Instale as dependências do frontend:
 
-``` bash
+```bash
 
 cd ../frontend
 
 npm install
 ```
 
-------------------------------------------------------------------------
-
+---
 ## Banco de dados
 
-O banco escolhido foi ****PostgreSQL****.
+O banco escolhido foi **PostgreSQL**.
 
 Para facilitar a avaliação local, o repositório inclui um `docker-compose.yml` que cria uma instância PostgreSQL já compatível com a configuração de desenvolvimento.
 
@@ -567,28 +548,28 @@ Para facilitar a avaliação local, o repositório inclui um `docker-compose.yml
 
 Na raiz do projeto:
 
-``` bash
+```bash
 
 docker compose up -d
 ```
 
 Caso a sua instalação utilize o comando legado:
 
-``` bash
+```bash
 
 docker-compose up -d
 ```
 
 Confira os containers:
 
-``` bash
+```bash
 
 docker compose ps
 ```
 
 A configuração local utiliza:
 
-``` text
+```text
 
 host: localhost
 
@@ -603,32 +584,32 @@ password: elite_dev
 
 A URL correspondente é:
 
-``` text
+```text
 
 postgresql://elite_dev:elite_dev@localhost:5432/elite_dev
 ```
 
-*\> Essas credenciais existem apenas para o ambiente local de desenvolvimento definido no Docker Compose.*
+> Essas credenciais existem apenas para o ambiente local de desenvolvimento definido no Docker Compose.
 
 ### Aplicar migrations
 
 Entre no backend:
 
-``` bash
+```bash
 
 cd backend
 ```
 
 Gere o Prisma Client:
 
-``` bash
+```bash
 
 npx prisma generate
 ```
 
 Aplique as migrations existentes:
 
-``` bash
+```bash
 
 npx prisma migrate deploy
 ```
@@ -637,7 +618,7 @@ npx prisma migrate deploy
 
 Execute:
 
-``` bash
+```bash
 
 npx prisma db seed
 ```
@@ -648,15 +629,14 @@ Isso cria usuários de teste e eventos iniciais para facilitar a avaliação.
 
 Caso seja necessário recriar completamente o banco de desenvolvimento:
 
-``` bash
+```bash
 
 npx prisma migrate reset
 ```
 
-*\> Atenção: esse comando apaga os dados existentes no banco configurado.*
+> Atenção: esse comando apaga os dados existentes no banco configurado.
 
-------------------------------------------------------------------------
-
+---
 ## Variáveis de ambiente
 
 Nenhum segredo real é versionado.
@@ -667,7 +647,7 @@ Use os arquivos `.env.example` como base.
 
 Crie:
 
-``` bash
+```bash
 
 cd backend
 
@@ -676,7 +656,7 @@ cp .env.example .env
 
 Exemplo:
 
-``` env
+```env
 
 DATABASE_URL=postgresql://elite_dev:elite_dev@localhost:5432/elite_dev
 
@@ -697,7 +677,7 @@ Segredo utilizado para assinatura dos tokens JWT.
 
 Para gerar um valor local:
 
-``` bash
+```bash
 
 openssl rand -hex 32
 ```
@@ -714,7 +694,7 @@ A aplicação utiliza esse token no backend para pesquisar e consultar filmes.
 
 Crie:
 
-``` bash
+```bash
 
 cd frontend
 
@@ -723,49 +703,47 @@ cp .env.example .env
 
 Exemplo:
 
-``` env
+```env
 
 VITE_API_URL=http://localhost:3000
 ```
 
-------------------------------------------------------------------------
-
+---
 ## Seed e usuários de teste
 
 Após executar:
 
-``` bash
+```bash
 
 npx prisma db seed
 ```
 
 os seguintes usuários estarão disponíveis:
 
-\| Perfil \| E-mail \| Senha \|
+| Perfil | E-mail | Senha |
 
-\| --- \| --- \| --- \|
+| --- | --- | --- |
 
-\| Organizador \| `organizer@elitedev.test` \| `EliteDev123!` \|
+| Organizador | `organizer@elitedev.test` | `EliteDev123!` |
 
-\| Cliente 1 \| `cliente1@elitedev.test` \| `EliteDev123!` \|
+| Cliente 1 | `cliente1@elitedev.test` | `EliteDev123!` |
 
-\| Cliente 2 \| `cliente2@elitedev.test` \| `EliteDev123!` \|
+| Cliente 2 | `cliente2@elitedev.test` | `EliteDev123!` |
 
-\| Portaria \| `portaria@elitedev.test` \| `EliteDev123!` \|
+| Portaria | `portaria@elitedev.test` | `EliteDev123!` |
 
 Essas credenciais são exclusivamente dados de demonstração criados pelo seed.
 
 O seed também cria ao menos um evento publicado para permitir a navegação inicial sem que o avaliador precise criar tudo do zero.
 
-------------------------------------------------------------------------
-
+---
 ## Como executar
 
 ### 1. Banco
 
 Na raiz:
 
-``` bash
+```bash
 
 docker compose up -d
 ```
@@ -774,7 +752,7 @@ docker compose up -d
 
 Em outro terminal:
 
-``` bash
+```bash
 
 cd backend
 
@@ -783,7 +761,7 @@ npm run dev
 
 Por padrão:
 
-``` text
+```text
 
 http://localhost:3000
 ```
@@ -792,7 +770,7 @@ http://localhost:3000
 
 Em outro terminal:
 
-``` bash
+```bash
 
 cd frontend
 
@@ -803,13 +781,12 @@ O Vite exibirá no terminal a URL utilizada pelo frontend.
 
 Normalmente:
 
-``` text
+```text
 
 http://localhost:5173
 ```
 
-------------------------------------------------------------------------
-
+---
 ## Fluxos para avaliação
 
 ### Fluxo do organizador
@@ -872,16 +849,15 @@ Também é possível realizar uma nova reserva e simular pagamento recusado para
 
 Também podem ser testados:
 
-- um conteúdo inexistente -\> `INVALID`;
+- um conteúdo inexistente → `INVALID`;
 
-- ingresso válido selecionando outro evento -\> `WRONG_EVENT`;
+- ingresso válido selecionando outro evento → `WRONG_EVENT`;
 
 - UUID completo do ingresso pelo campo manual.
 
-*\> A leitura por câmera depende da permissão de câmera do navegador. Em produção, navegadores normalmente exigem contexto seguro (HTTPS) para acesso à câmera.*
+> A leitura por câmera depende da permissão de câmera do navegador. Em produção, navegadores normalmente exigem contexto seguro (HTTPS) para acesso à câmera.
 
-------------------------------------------------------------------------
-
+---
 ## Roteiro de testes manuais
 
 Os fluxos principais foram validados manualmente na aplicação publicada. O roteiro abaixo pode ser utilizado pelo avaliador para reproduzir os cenários mais importantes.
@@ -940,13 +916,15 @@ Foram verificados acesso direto a rotas internas, atualização com `F5`, compar
 
 > Estes são testes manuais. Testes automatizados permanecem documentados como não implementados.
 
+---
+
 ## Build e validação
 
 ### Backend
 
 Validar o schema Prisma:
 
-``` bash
+```bash
 
 cd backend
 
@@ -955,7 +933,7 @@ npx prisma validate
 
 Build:
 
-``` bash
+```bash
 
 npm run build
 ```
@@ -964,7 +942,7 @@ npm run build
 
 Lint:
 
-``` bash
+```bash
 
 cd frontend
 
@@ -973,18 +951,19 @@ npm run lint
 
 Build de produção:
 
-``` bash
+```bash
 
 npm run build
 ```
 
 No estado atual do projeto, os comandos acima finalizam sem erros.
 
-O build do frontend pode informar que o bundle principal ultrapassa 500 kB. Esse é um ****warning de otimização****, principalmente relacionado às dependências utilizadas no fluxo de leitura de QR Code, e não impede a compilação ou execução da aplicação.
+O build do frontend pode informar que o bundle principal ultrapassa 500 kB. Esse é um **warning de otimização**, principalmente relacionado às dependências utilizadas no fluxo de leitura de QR Code, e não impede a compilação ou execução da aplicação.
 
 Uma evolução futura seria realizar code splitting do módulo de leitura por câmera.
 
-------------------------------------------------------------------------
+---
+---
 
 ## Deploy
 
@@ -1003,6 +982,8 @@ A API Node.js/Express está publicada no Render:
 O ambiente de produção utiliza PostgreSQL hospedado no Render, com migrations e seed do Prisma aplicados no banco de produção.
 
 Segredos como `DATABASE_URL`, `JWT_SECRET` e `TMDB_ACCESS_TOKEN` permanecem exclusivamente em variáveis de ambiente das plataformas de hospedagem.
+
+---
 
 ## Limitações e itens não implementados
 
@@ -1032,7 +1013,7 @@ Alguns desses itens são explicitamente opcionais ou estão fora do escopo solic
 
 ### Sobre cancelamento
 
-Existe devolução de estoque quando um ****pagamento simulado é recusado****, mas não foi implementado um fluxo de cancelamento de uma compra já aprovada.
+Existe devolução de estoque quando um **pagamento simulado é recusado**, mas não foi implementado um fluxo de cancelamento de uma compra já aprovada.
 
 Essa diferença é intencionalmente documentada para não apresentar uma funcionalidade parcial como se fosse cancelamento completo.
 
@@ -1040,11 +1021,10 @@ Essa diferença é intencionalmente documentada para não apresentar uma funcion
 
 Foi escolhido o modelo de compra por quantidade/pista. Portanto, mapa de assentos em tempo real não é aplicável ao fluxo implementado.
 
-------------------------------------------------------------------------
-
+---
 ## Uso de Inteligência Artificial
 
-Ferramentas de IA foram utilizadas durante o desenvolvimento como apoio de ****pair programming****.
+Ferramentas de IA foram utilizadas durante o desenvolvimento como apoio de **pair programming**.
 
 O uso incluiu principalmente:
 
@@ -1098,102 +1078,68 @@ Exemplos de decisões tomadas durante esse processo incluem:
 
 O histórico de commits do repositório também foi mantido de forma incremental para registrar a evolução do projeto.
 
-------------------------------------------------------------------------
-
+---
 ## Referências
 
 ### Referências de produto sugeridas pelo desafio
 
 As plataformas abaixo foram utilizadas como referência conceitual de fluxo, sem reprodução de suas interfaces ou implementação:
 
-- ****Ingresso.com**** --- referência para experiência de compra de cinema e seleção de lugares.
-
-- \[[https://www.ingresso.com/\](https://www.ingresso.com/)](https://www.ingresso.com/](https://www.ingresso.com/))
-
-- ****Eventim Brasil**** --- referência para eventos com setores/pista e compra por quantidade.
-
-- \[[https://www.eventim.com.br/\](https://www.eventim.com.br/)](https://www.eventim.com.br/](https://www.eventim.com.br/))
-
-- ****Sympla**** --- referência para criação de eventos e checkout.
-
-- \[[https://www.sympla.com.br/\](https://www.sympla.com.br/)](https://www.sympla.com.br/](https://www.sympla.com.br/))
+- **Ingresso.com** — referência para experiência de compra de cinema e seleção de lugares.
+  - https://www.ingresso.com/
+- **Eventim Brasil** — referência para eventos com setores/pista e compra por quantidade.
+  - https://www.eventim.com.br/
+- **Sympla** — referência para criação de eventos e checkout.
+  - https://www.sympla.com.br/
 
 ### API externa
 
-- ****TMDb --- documentação da API****
-
-- \[[https://developer.themoviedb.org/\](https://developer.themoviedb.org/)](https://developer.themoviedb.org/](https://developer.themoviedb.org/))
-
-- ****TMDb --- Getting Started****
-
-- \[[https://developer.themoviedb.org/reference/intro/getting-started\](https://developer.themoviedb.org/reference/intro/getting-started)](https://developer.themoviedb.org/reference/intro/getting-started](https://developer.themoviedb.org/reference/intro/getting-started))
-
-- ****TMDb --- Search Movie****
-
-- \[[https://developer.themoviedb.org/reference/search-movie\](https://developer.themoviedb.org/reference/search-movie)](https://developer.themoviedb.org/reference/search-movie](https://developer.themoviedb.org/reference/search-movie))
-
-- ****The Movie Database****
-
-- \[[https://www.themoviedb.org/\](https://www.themoviedb.org/)](https://www.themoviedb.org/](https://www.themoviedb.org/))
+- **TMDb — documentação da API**
+  - https://developer.themoviedb.org/
+- **TMDb — Getting Started**
+  - https://developer.themoviedb.org/reference/intro/getting-started
+- **TMDb — Search Movie**
+  - https://developer.themoviedb.org/reference/search-movie
+- **The Movie Database**
+  - https://www.themoviedb.org/
 
 ### Frontend
 
-- ****React****
-
-- \[[https://react.dev/\](https://react.dev/)](https://react.dev/](https://react.dev/))
-
-- ****Vite****
-
-- \[[https://vite.dev/\](https://vite.dev/)](https://vite.dev/](https://vite.dev/))
-
-- ****ZXing for JS --- Browser****
-
-- <https://github.com/zxing-js/browser>
-
-- ****qrcode****
-
-- \[[https://www.npmjs.com/package/qrcode\](https://www.npmjs.com/package/qrcode)](https://www.npmjs.com/package/qrcode](https://www.npmjs.com/package/qrcode))
+- **React**
+  - https://react.dev/
+- **Vite**
+  - https://vite.dev/
+- **ZXing for JS — Browser**
+  - https://github.com/zxing-js/browser
+- **qrcode**
+  - https://www.npmjs.com/package/qrcode
 
 ### Backend e banco
 
-- ****Node.js****
-
-- \[[https://nodejs.org/\](https://nodejs.org/)](https://nodejs.org/](https://nodejs.org/))
-
-- ****Express****
-
-- \[[https://expressjs.com/\](https://expressjs.com/)](https://expressjs.com/](https://expressjs.com/))
-
-- ****Prisma ORM****
-
-- \[[https://www.prisma.io/docs\](https://www.prisma.io/docs)](https://www.prisma.io/docs](https://www.prisma.io/docs))
-
-- ****Prisma com PostgreSQL****
-
-- \[[https://www.prisma.io/docs/orm/overview/databases/postgresql\](https://www.prisma.io/docs/orm/overview/databases/postgresql)](https://www.prisma.io/docs/orm/overview/databases/postgresql](https://www.prisma.io/docs/orm/overview/databases/postgresql))
-
-- ****PostgreSQL****
-
-- \[[https://www.postgresql.org/docs/\](https://www.postgresql.org/docs/)](https://www.postgresql.org/docs/](https://www.postgresql.org/docs/))
-
-- ****JSON Web Token****
-
-- \[[https://jwt.io/\](https://jwt.io/)](https://jwt.io/](https://jwt.io/))
+- **Node.js**
+  - https://nodejs.org/
+- **Express**
+  - https://expressjs.com/
+- **Prisma ORM**
+  - https://www.prisma.io/docs
+- **Prisma com PostgreSQL**
+  - https://www.prisma.io/docs/orm/overview/databases/postgresql
+- **PostgreSQL**
+  - https://www.postgresql.org/docs/
+- **JSON Web Token**
+  - https://jwt.io/
 
 ### Infraestrutura
 
-- ****Docker****
+- **Docker**
+  - https://docs.docker.com/
+- **Docker Compose**
+  - https://docs.docker.com/compose/
 
-- \[[https://docs.docker.com/\](https://docs.docker.com/)](https://docs.docker.com/](https://docs.docker.com/))
-
-- ****Docker Compose****
-
-- \[[https://docs.docker.com/compose/\](https://docs.docker.com/compose/)](https://docs.docker.com/compose/](https://docs.docker.com/compose/))
-
-------------------------------------------------------------------------
+---
 
 ## Autor
 
-****João Victor****
+**João Victor**
 
-Projeto desenvolvido como solução para o ****Desafio Técnico Elite Dev / Verzel****.
+Projeto desenvolvido como solução para o **Desafio Técnico Elite Dev / Verzel**.
