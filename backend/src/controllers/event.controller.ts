@@ -87,6 +87,7 @@ export async function listOrganizerEvents(
       imageUrl: true,
       startsAt: true,
       venueName: true,
+      venueAddress: true,
       capacity: true,
       availableTickets: true,
       priceCents: true,
@@ -131,13 +132,10 @@ export async function createEvent(req: Request, res: Response) {
 
   const parsedStartsAt = new Date(startsAt);
 
-  if (Number.isNaN(parsedStartsAt.getTime())) {
-    return res.status(400).json({
-      message: "Data do evento inválida.",
-    });
-  }
-
-  if (parsedStartsAt <= new Date()) {
+  if (
+    Number.isNaN(parsedStartsAt.getTime()) ||
+    parsedStartsAt <= new Date()
+  ) {
     return res.status(400).json({
       message: "O evento deve acontecer em uma data futura.",
     });
@@ -145,6 +143,47 @@ export async function createEvent(req: Request, res: Response) {
 
   try {
     const movie = await getTmdbMovie(String(externalId));
+
+    const cleanVenueName = String(venueName).trim();
+    const cleanVenueAddress = String(venueAddress).trim();
+
+    const conflictStart = new Date(
+      parsedStartsAt.getTime() - 30 * 60 * 1000,
+    );
+
+    const conflictEnd = new Date(
+      parsedStartsAt.getTime() + 30 * 60 * 1000,
+    );
+
+    const conflictingEvent = await prisma.event.findFirst({
+      where: {
+        organizerId: req.user.id,
+
+        externalProvider: "TMDB",
+        externalId: movie.externalId,
+
+        venueName: {
+          equals: cleanVenueName,
+          mode: "insensitive",
+        },
+
+        status: {
+          not: "CANCELLED",
+        },
+
+        startsAt: {
+          gte: conflictStart,
+          lte: conflictEnd,
+        },
+      },
+    });
+
+    if (conflictingEvent) {
+      return res.status(409).json({
+        message:
+          "Já existe uma sessão deste filme neste local em um horário muito próximo.",
+      });
+    }
 
     const event = await prisma.event.create({
       data: {
@@ -159,8 +198,8 @@ export async function createEvent(req: Request, res: Response) {
 
         startsAt: parsedStartsAt,
 
-        venueName: String(venueName).trim(),
-        venueAddress: String(venueAddress).trim(),
+        venueName: cleanVenueName,
+        venueAddress: cleanVenueAddress,
 
         capacity,
         availableTickets: capacity,
@@ -206,4 +245,88 @@ export async function createEvent(req: Request, res: Response) {
       message: "Não foi possível criar o evento.",
     });
   }
-};
+}
+
+export async function updateEvent(
+  req: Request<{ id: string }>,
+  res: Response,
+) {
+  if (!req.user) {
+    return res.status(401).json({
+      message: "Usuário não autenticado.",
+    });
+  }
+
+  const { id } = req.params;
+  const { addCapacity, priceCents } = req.body;
+
+  const event = await prisma.event.findFirst({
+    where: {
+      id,
+      organizerId: req.user.id,
+    },
+  });
+
+  if (!event) {
+    return res.status(404).json({
+      message: "Evento não encontrado.",
+    });
+  }
+
+  if (event.status !== "PUBLISHED") {
+    return res.status(409).json({
+      message: "Apenas sessões publicadas podem ser alteradas.",
+    });
+  }
+
+  if (
+    addCapacity !== undefined &&
+    (!Number.isInteger(addCapacity) || addCapacity <= 0)
+  ) {
+    return res.status(400).json({
+      message:
+        "A quantidade de novos lugares deve ser um número inteiro maior que zero.",
+    });
+  }
+
+  if (
+    priceCents !== undefined &&
+    (!Number.isInteger(priceCents) || priceCents <= 0)
+  ) {
+    return res.status(400).json({
+      message: "Preço inválido.",
+    });
+  }
+
+  if (
+    addCapacity === undefined &&
+    priceCents === undefined
+  ) {
+    return res.status(400).json({
+      message: "Nenhuma alteração foi informada.",
+    });
+  }
+
+  const updatedEvent = await prisma.event.update({
+    where: {
+      id: event.id,
+    },
+    data: {
+      ...(priceCents !== undefined && {
+        priceCents,
+      }),
+
+      ...(addCapacity !== undefined && {
+        capacity: {
+          increment: addCapacity,
+        },
+
+        availableTickets: {
+          increment: addCapacity,
+        },
+      }),
+    },
+  });
+
+  return res.json(updatedEvent);
+}

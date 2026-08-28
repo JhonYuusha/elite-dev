@@ -1,6 +1,5 @@
 import { BrowserRouter, Navigate, Route, Routes,} from "react-router-dom";
-
-import { AuthProvider } from "./context/AuthContext";
+import { AuthProvider } from "./context/AuthProvider";
 import { HomePage } from "./pages/HomePage";
 import { LoginPage } from "./pages/LoginPage";
 import { EventDetailsPage } from "./pages/EventDetailsPage";
@@ -8,14 +7,7 @@ import { CheckoutPage } from "./pages/CheckoutPage";
 import { MyTicketsPage } from "./pages/MyTicketsPage";
 import { SharedTicketPage } from "./pages/SharedTicketPage";
 import { GatePage } from "./pages/GatePage";
-
-function Placeholder({ title }: { title: string }) {
-  return (
-    <main>
-      <h1>{title}</h1>
-    </main>
-  );
-}
+import { OrganizerPage } from "./pages/OrganizerPage";
 
 function App() {
   return (
@@ -36,7 +28,7 @@ function App() {
 
           <Route
             path="/organizer"
-            element={<Placeholder title="Painel do organizador" />}
+            element={<OrganizerPage />}
           />
 
           <Route

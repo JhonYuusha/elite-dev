@@ -5,6 +5,7 @@ import {
   getEventById,
   listEvents,
   listOrganizerEvents,
+  updateEvent,
 } from "../controllers/event.controller.js";
 
 import { authenticate } from "../middlewares/authenticate.js";
@@ -28,4 +29,11 @@ eventRouter.post(
   authenticate,
   authorize("ORGANIZER"),
   createEvent,
+);
+
+eventRouter.patch(
+  "/:id",
+  authenticate,
+  authorize("ORGANIZER"),
+  updateEvent,
 );

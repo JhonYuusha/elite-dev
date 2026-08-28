@@ -17,9 +17,6 @@ function generateTicketCode(ticketId: string, eventId: string) {
       type: "TICKET",
     },
     secret,
-    {
-      expiresIn: "30d",
-    },
   );
 }
 
@@ -57,6 +54,9 @@ export async function listMyTickets(req: Request, res: Response) {
     validatedAt: ticket.validatedAt,
     createdAt: ticket.createdAt,
     event: ticket.event,
+
+    // O QR contém um JWT assinado pelo backend.
+    // A validade real do ingresso é conferida no banco.
     qrCode: generateTicketCode(ticket.id, ticket.eventId),
   }));
 
