@@ -1,31 +1,18 @@
 import type { Request, Response } from "express";
 
-import { prisma } from "../lib/prisma.js";
-import { getTmdbMovie } from "../services/tmdb.service.js";
+import {
+  createEventSchema,
+  updateEventSchema,
+} from "../schemas/event.schema.js";
 
-export async function listEvents(_req: Request, res: Response) {
-  const events = await prisma.event.findMany({
-    where: {
-      status: "PUBLISHED",
-      startsAt: {
-        gte: new Date(),
-      },
-    },
-    orderBy: {
-      startsAt: "asc",
-    },
-    select: {
-      id: true,
-      title: true,
-      description: true,
-      imageUrl: true,
-      startsAt: true,
-      venueName: true,
-      venueAddress: true,
-      priceCents: true,
-      availableTickets: true,
-    },
-  });
+import { eventService } from "../services/event.service.js";
+
+export async function listEvents(
+  _req: Request,
+  res: Response,
+) {
+  const events =
+    await eventService.listPublishedEvents();
 
   return res.json(events);
 }
@@ -34,32 +21,10 @@ export async function getEventById(
   req: Request<{ id: string }>,
   res: Response,
 ) {
-  const { id } = req.params;
-
-  const event = await prisma.event.findFirst({
-    where: {
-      id,
-      status: "PUBLISHED",
-    },
-    select: {
-      id: true,
-      title: true,
-      description: true,
-      imageUrl: true,
-      startsAt: true,
-      venueName: true,
-      venueAddress: true,
-      capacity: true,
-      availableTickets: true,
-      priceCents: true,
-    },
-  });
-
-  if (!event) {
-    return res.status(404).json({
-      message: "Evento não encontrado.",
-    });
-  }
+  const event =
+    await eventService.getPublishedEventById(
+      req.params.id,
+    );
 
   return res.json(event);
 }
@@ -68,265 +33,39 @@ export async function listOrganizerEvents(
   req: Request,
   res: Response,
 ) {
-  if (!req.user) {
-    return res.status(401).json({
-      message: "Usuário não autenticado.",
-    });
-  }
-
-  const events = await prisma.event.findMany({
-    where: {
-      organizerId: req.user.id,
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-    select: {
-      id: true,
-      title: true,
-      imageUrl: true,
-      startsAt: true,
-      venueName: true,
-      venueAddress: true,
-      capacity: true,
-      availableTickets: true,
-      priceCents: true,
-      status: true,
-      createdAt: true,
-    },
-  });
+  const events =
+    await eventService.listOrganizerEvents(
+      req.user!.id,
+    );
 
   return res.json(events);
 }
 
-export async function createEvent(req: Request, res: Response) {
-  if (!req.user) {
-    return res.status(401).json({
-      message: "Usuário não autenticado.",
-    });
-  }
+export async function createEvent(
+  req: Request,
+  res: Response,
+) {
+  const input = createEventSchema.parse(req.body);
 
-  const {
-    externalId,
-    startsAt,
-    venueName,
-    venueAddress,
-    capacity,
-    priceCents,
-  } = req.body;
+  const event = await eventService.createEvent(
+    req.user!.id,
+    input,
+  );
 
-  if (
-    !externalId ||
-    !startsAt ||
-    !venueName ||
-    !venueAddress ||
-    !Number.isInteger(capacity) ||
-    capacity <= 0 ||
-    !Number.isInteger(priceCents) ||
-    priceCents <= 0
-  ) {
-    return res.status(400).json({
-      message: "Dados do evento inválidos.",
-    });
-  }
-
-  const parsedStartsAt = new Date(startsAt);
-
-  if (
-    Number.isNaN(parsedStartsAt.getTime()) ||
-    parsedStartsAt <= new Date()
-  ) {
-    return res.status(400).json({
-      message: "O evento deve acontecer em uma data futura.",
-    });
-  }
-
-  try {
-    const movie = await getTmdbMovie(String(externalId));
-
-    const cleanVenueName = String(venueName).trim();
-    const cleanVenueAddress = String(venueAddress).trim();
-
-    const conflictStart = new Date(
-      parsedStartsAt.getTime() - 30 * 60 * 1000,
-    );
-
-    const conflictEnd = new Date(
-      parsedStartsAt.getTime() + 30 * 60 * 1000,
-    );
-
-    const conflictingEvent = await prisma.event.findFirst({
-      where: {
-        organizerId: req.user.id,
-
-        externalProvider: "TMDB",
-        externalId: movie.externalId,
-
-        venueName: {
-          equals: cleanVenueName,
-          mode: "insensitive",
-        },
-
-        status: {
-          not: "CANCELLED",
-        },
-
-        startsAt: {
-          gte: conflictStart,
-          lte: conflictEnd,
-        },
-      },
-    });
-
-    if (conflictingEvent) {
-      return res.status(409).json({
-        message:
-          "Já existe uma sessão deste filme neste local em um horário muito próximo.",
-      });
-    }
-
-    const event = await prisma.event.create({
-      data: {
-        organizerId: req.user.id,
-
-        externalProvider: "TMDB",
-        externalId: movie.externalId,
-
-        title: movie.title,
-        description: movie.description,
-        imageUrl: movie.imageUrl,
-
-        startsAt: parsedStartsAt,
-
-        venueName: cleanVenueName,
-        venueAddress: cleanVenueAddress,
-
-        capacity,
-        availableTickets: capacity,
-
-        priceCents,
-
-        status: "PUBLISHED",
-      },
-    });
-
-    return res.status(201).json(event);
-  } catch (error) {
-    if (
-      error instanceof Error &&
-      error.message === "TMDB_MOVIE_NOT_FOUND"
-    ) {
-      return res.status(404).json({
-        message: "Filme não encontrado no catálogo TMDb.",
-      });
-    }
-
-    if (
-      error instanceof Error &&
-      error.message === "TMDB_NOT_CONFIGURED"
-    ) {
-      return res.status(500).json({
-        message: "Integração com TMDb não configurada.",
-      });
-    }
-
-    if (
-      error instanceof Error &&
-      error.message === "TMDB_REQUEST_FAILED"
-    ) {
-      return res.status(502).json({
-        message: "Não foi possível consultar o catálogo TMDb.",
-      });
-    }
-
-    console.error("Erro ao criar evento:", error);
-
-    return res.status(500).json({
-      message: "Não foi possível criar o evento.",
-    });
-  }
+  return res.status(201).json(event);
 }
 
 export async function updateEvent(
   req: Request<{ id: string }>,
   res: Response,
 ) {
-  if (!req.user) {
-    return res.status(401).json({
-      message: "Usuário não autenticado.",
-    });
-  }
+  const input = updateEventSchema.parse(req.body);
 
-  const { id } = req.params;
-  const { addCapacity, priceCents } = req.body;
+  const event = await eventService.updateEvent(
+    req.user!.id,
+    req.params.id,
+    input,
+  );
 
-  const event = await prisma.event.findFirst({
-    where: {
-      id,
-      organizerId: req.user.id,
-    },
-  });
-
-  if (!event) {
-    return res.status(404).json({
-      message: "Evento não encontrado.",
-    });
-  }
-
-  if (event.status !== "PUBLISHED") {
-    return res.status(409).json({
-      message: "Apenas sessões publicadas podem ser alteradas.",
-    });
-  }
-
-  if (
-    addCapacity !== undefined &&
-    (!Number.isInteger(addCapacity) || addCapacity <= 0)
-  ) {
-    return res.status(400).json({
-      message:
-        "A quantidade de novos lugares deve ser um número inteiro maior que zero.",
-    });
-  }
-
-  if (
-    priceCents !== undefined &&
-    (!Number.isInteger(priceCents) || priceCents <= 0)
-  ) {
-    return res.status(400).json({
-      message: "Preço inválido.",
-    });
-  }
-
-  if (
-    addCapacity === undefined &&
-    priceCents === undefined
-  ) {
-    return res.status(400).json({
-      message: "Nenhuma alteração foi informada.",
-    });
-  }
-
-  const updatedEvent = await prisma.event.update({
-    where: {
-      id: event.id,
-    },
-    data: {
-      ...(priceCents !== undefined && {
-        priceCents,
-      }),
-
-      ...(addCapacity !== undefined && {
-        capacity: {
-          increment: addCapacity,
-        },
-
-        availableTickets: {
-          increment: addCapacity,
-        },
-      }),
-    },
-  });
-
-  return res.json(updatedEvent);
+  return res.json(event);
 }
