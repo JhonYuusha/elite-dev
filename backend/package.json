@@ -4,14 +4,14 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-  "dev": "tsx watch src/index.ts",
-  "build": "tsc",
-  "start": "node dist/index.js",
-  "prisma:generate": "prisma generate",
-  "db:migrate": "prisma migrate deploy",
-  "db:seed": "prisma db seed",
-  "test": "echo \"No automated tests configured yet\""
- },
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "prisma:generate": "prisma generate",
+    "db:migrate": "prisma migrate deploy",
+    "db:seed": "prisma db seed",
+    "test": "echo \"No automated tests configured yet\""
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
@@ -24,7 +24,8 @@
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
-    "pg": "^8.23.0"
+    "pg": "^8.23.0",
+    "zod": "^4.5.4"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",

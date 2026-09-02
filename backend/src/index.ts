@@ -10,6 +10,8 @@ import { ticketRouter } from "./routes/ticket.routes.js";
 import { gateRouter } from "./routes/gate.routes.js";
 import { catalogRouter } from "./routes/catalog.routes.js";
 
+import { errorHandler } from "./middlewares/error-handler.js";
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -29,6 +31,8 @@ app.use("/payments", paymentRouter);
 app.use("/tickets", ticketRouter);
 app.use("/gate", gateRouter);
 app.use("/catalog", catalogRouter);
+
+app.use(errorHandler);
 
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
