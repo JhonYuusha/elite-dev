@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { BrowserQRCodeReader } from "@zxing/browser";
 import axios from "axios";
 
 import { api } from "../services/api";
@@ -134,6 +133,8 @@ export function GatePage() {
       setLastRead("");
 
       setCameraStatus("Solicitando acesso à câmera...");
+
+      const { BrowserQRCodeReader } = await import("@zxing/browser");
 
       const reader = new BrowserQRCodeReader();
 
