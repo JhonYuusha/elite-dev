@@ -1,18 +1,41 @@
-import type { NextFunction, Request, Response } from "express";
-import type { UserRole } from "../generated/prisma/enums.js";
+import type {
+  NextFunction,
+  Request,
+  Response,
+} from "express";
 
-export function authorize(...roles: UserRole[]) {
-  return (req: Request, res: Response, next: NextFunction) => {
+import { AppError } from "../errors/app-error.js";
+
+import type {
+  AuthenticatedUser,
+} from "../types/auth.js";
+
+export function authorize(
+  ...roles: AuthenticatedUser["role"][]
+) {
+  return (
+    req: Request,
+    _res: Response,
+    next: NextFunction,
+  ) => {
     if (!req.user) {
-      return res.status(401).json({
-        message: "Usuário não autenticado.",
-      });
+      throw new AppError(
+        "Usuário não autenticado.",
+        401,
+        "UNAUTHENTICATED",
+      );
     }
 
-    if (!roles.includes(req.user.role)) {
-      return res.status(403).json({
-        message: "Você não possui permissão para acessar este recurso.",
-      });
+    if (
+      !roles.includes(
+        req.user.role,
+      )
+    ) {
+      throw new AppError(
+        "Você não tem permissão para acessar este recurso.",
+        403,
+        "FORBIDDEN",
+      );
     }
 
     next();

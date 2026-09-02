@@ -1,7 +1,16 @@
-import type { NextFunction, Request, Response } from "express";
+import type {
+  NextFunction,
+  Request,
+  Response,
+} from "express";
+
 import jwt from "jsonwebtoken";
 
-import type { AuthenticatedUser } from "../types/auth.js";
+import { AppError } from "../errors/app-error.js";
+
+import type {
+  AuthenticatedUser,
+} from "../types/auth.js";
 
 declare global {
   namespace Express {
@@ -17,34 +26,53 @@ type TokenPayload = {
 
 export function authenticate(
   req: Request,
-  res: Response,
+  _res: Response,
   next: NextFunction,
 ) {
-  const authorization = req.headers.authorization;
+  const authorization =
+    req.headers.authorization;
 
-  if (!authorization?.startsWith("Bearer ")) {
-    return res.status(401).json({
-      message: "Token de autenticação não informado.",
-    });
+  if (
+    !authorization?.startsWith(
+      "Bearer ",
+    )
+  ) {
+    throw new AppError(
+      "Token de autenticação não informado.",
+      401,
+      "AUTH_TOKEN_MISSING",
+    );
   }
 
-  const token = authorization.slice(7);
+  const token =
+    authorization.slice(7);
 
-  const jwtSecret = process.env.JWT_SECRET;
+  const jwtSecret =
+    process.env.JWT_SECRET;
 
   if (!jwtSecret) {
-    throw new Error("JWT_SECRET não definida.");
+    throw new Error(
+      "JWT_SECRET não definida.",
+    );
   }
 
   try {
-    const payload = jwt.verify(token, jwtSecret) as TokenPayload & {
+    const payload = jwt.verify(
+      token,
+      jwtSecret,
+    ) as TokenPayload & {
       sub?: string;
     };
 
-    if (!payload.sub || !payload.role) {
-      return res.status(401).json({
-        message: "Token inválido.",
-      });
+    if (
+      !payload.sub ||
+      !payload.role
+    ) {
+      throw new AppError(
+        "Token inválido.",
+        401,
+        "INVALID_AUTH_TOKEN",
+      );
     }
 
     req.user = {
@@ -53,9 +81,15 @@ export function authenticate(
     };
 
     next();
-  } catch {
-    return res.status(401).json({
-      message: "Token inválido ou expirado.",
-    });
+  } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
+
+    throw new AppError(
+      "Token inválido ou expirado.",
+      401,
+      "INVALID_AUTH_TOKEN",
+    );
   }
 }
