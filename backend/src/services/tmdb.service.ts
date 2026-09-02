@@ -1,3 +1,5 @@
+import { TmdbError } from "../errors/tmdb-error.js";
+
 type TmdbMovieDetails = {
   id: number;
   title: string;
@@ -9,11 +11,16 @@ type TmdbMovieDetails = {
   vote_average: number;
 };
 
-export async function getTmdbMovie(movieId: string) {
-  const accessToken = process.env.TMDB_ACCESS_TOKEN;
+export async function getTmdbMovie(
+  movieId: string,
+) {
+  const accessToken =
+    process.env.TMDB_ACCESS_TOKEN;
 
   if (!accessToken) {
-    throw new Error("TMDB_NOT_CONFIGURED");
+    throw new TmdbError(
+      "TMDB_NOT_CONFIGURED",
+    );
   }
 
   const response = await fetch(
@@ -27,21 +34,29 @@ export async function getTmdbMovie(movieId: string) {
   );
 
   if (response.status === 404) {
-    throw new Error("TMDB_MOVIE_NOT_FOUND");
+    throw new TmdbError(
+      "TMDB_MOVIE_NOT_FOUND",
+    );
   }
 
   if (!response.ok) {
-    throw new Error("TMDB_REQUEST_FAILED");
+    throw new TmdbError(
+      "TMDB_REQUEST_FAILED",
+    );
   }
 
-  const movie = (await response.json()) as TmdbMovieDetails;
+  const movie =
+    (await response.json()) as TmdbMovieDetails;
 
   return {
     externalProvider: "TMDB",
     externalId: String(movie.id),
+
     title: movie.title,
     originalTitle: movie.original_title,
-    description: movie.overview || null,
+
+    description:
+      movie.overview || null,
 
     imageUrl: movie.poster_path
       ? `https://image.tmdb.org/t/p/w500${movie.poster_path}`
@@ -51,7 +66,9 @@ export async function getTmdbMovie(movieId: string) {
       ? `https://image.tmdb.org/t/p/w780${movie.backdrop_path}`
       : null,
 
-    releaseDate: movie.release_date || null,
+    releaseDate:
+      movie.release_date || null,
+
     rating: movie.vote_average,
   };
 }

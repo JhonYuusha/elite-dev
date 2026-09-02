@@ -1,4 +1,6 @@
 import { AppError } from "../errors/app-error.js";
+import { TmdbError } from "../errors/tmdb-error.js";
+
 import { prisma } from "../lib/prisma.js";
 
 import type {
@@ -12,6 +14,7 @@ async function listPublishedEvents() {
   return prisma.event.findMany({
     where: {
       status: "PUBLISHED",
+
       startsAt: {
         gte: new Date(),
       },
@@ -35,26 +38,29 @@ async function listPublishedEvents() {
   });
 }
 
-async function getPublishedEventById(id: string) {
-  const event = await prisma.event.findFirst({
-    where: {
-      id,
-      status: "PUBLISHED",
-    },
+async function getPublishedEventById(
+  id: string,
+) {
+  const event =
+    await prisma.event.findFirst({
+      where: {
+        id,
+        status: "PUBLISHED",
+      },
 
-    select: {
-      id: true,
-      title: true,
-      description: true,
-      imageUrl: true,
-      startsAt: true,
-      venueName: true,
-      venueAddress: true,
-      capacity: true,
-      availableTickets: true,
-      priceCents: true,
-    },
-  });
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        imageUrl: true,
+        startsAt: true,
+        venueName: true,
+        venueAddress: true,
+        capacity: true,
+        availableTickets: true,
+        priceCents: true,
+      },
+    });
 
   if (!event) {
     throw new AppError(
@@ -67,7 +73,9 @@ async function getPublishedEventById(id: string) {
   return event;
 }
 
-async function listOrganizerEvents(organizerId: string) {
+async function listOrganizerEvents(
+  organizerId: string,
+) {
   return prisma.event.findMany({
     where: {
       organizerId,
@@ -97,10 +105,13 @@ async function createEvent(
   organizerId: string,
   input: CreateEventInput,
 ) {
-  const parsedStartsAt = new Date(input.startsAt);
+  const parsedStartsAt =
+    new Date(input.startsAt);
 
   if (
-    Number.isNaN(parsedStartsAt.getTime()) ||
+    Number.isNaN(
+      parsedStartsAt.getTime(),
+    ) ||
     parsedStartsAt <= new Date()
   ) {
     throw new AppError(
@@ -113,54 +124,56 @@ async function createEvent(
   let movie;
 
   try {
-    movie = await getTmdbMovie(input.externalId);
+    movie =
+      await getTmdbMovie(
+        input.externalId,
+      );
   } catch (error) {
-    if (
-      error instanceof Error &&
-      error.message === "TMDB_MOVIE_NOT_FOUND"
-    ) {
-      throw new AppError(
-        "Filme não encontrado no catálogo TMDb.",
-        404,
-        "TMDB_MOVIE_NOT_FOUND",
-      );
-    }
+    if (error instanceof TmdbError) {
+      switch (error.code) {
+        case "TMDB_MOVIE_NOT_FOUND":
+          throw new AppError(
+            "Filme não encontrado no catálogo TMDb.",
+            404,
+            error.code,
+          );
 
-    if (
-      error instanceof Error &&
-      error.message === "TMDB_NOT_CONFIGURED"
-    ) {
-      throw new AppError(
-        "Integração com TMDb não configurada.",
-        500,
-        "TMDB_NOT_CONFIGURED",
-      );
-    }
+        case "TMDB_NOT_CONFIGURED":
+          throw new AppError(
+            "Integração com TMDb não configurada.",
+            500,
+            error.code,
+          );
 
-    if (
-      error instanceof Error &&
-      error.message === "TMDB_REQUEST_FAILED"
-    ) {
-      throw new AppError(
-        "Não foi possível consultar o catálogo TMDb.",
-        502,
-        "TMDB_REQUEST_FAILED",
-      );
+        case "TMDB_REQUEST_FAILED":
+          throw new AppError(
+            "Não foi possível consultar o catálogo TMDb.",
+            502,
+            error.code,
+          );
+      }
     }
 
     throw error;
   }
 
-  const cleanVenueName = input.venueName.trim();
-  const cleanVenueAddress = input.venueAddress.trim();
+  const cleanVenueName =
+    input.venueName.trim();
 
-  const conflictStart = new Date(
-    parsedStartsAt.getTime() - 30 * 60 * 1000,
-  );
+  const cleanVenueAddress =
+    input.venueAddress.trim();
 
-  const conflictEnd = new Date(
-    parsedStartsAt.getTime() + 30 * 60 * 1000,
-  );
+  const conflictStart =
+    new Date(
+      parsedStartsAt.getTime() -
+        30 * 60 * 1000,
+    );
+
+  const conflictEnd =
+    new Date(
+      parsedStartsAt.getTime() +
+        30 * 60 * 1000,
+    );
 
   const conflictingEvent =
     await prisma.event.findFirst({
@@ -168,7 +181,8 @@ async function createEvent(
         organizerId,
 
         externalProvider: "TMDB",
-        externalId: movie.externalId,
+        externalId:
+          movie.externalId,
 
         venueName: {
           equals: cleanVenueName,
@@ -199,23 +213,35 @@ async function createEvent(
       organizerId,
 
       externalProvider: "TMDB",
-      externalId: movie.externalId,
+      externalId:
+        movie.externalId,
 
       title: movie.title,
-      description: movie.description,
-      imageUrl: movie.imageUrl,
+      description:
+        movie.description,
+      imageUrl:
+        movie.imageUrl,
 
-      startsAt: parsedStartsAt,
+      startsAt:
+        parsedStartsAt,
 
-      venueName: cleanVenueName,
-      venueAddress: cleanVenueAddress,
+      venueName:
+        cleanVenueName,
 
-      capacity: input.capacity,
-      availableTickets: input.capacity,
+      venueAddress:
+        cleanVenueAddress,
 
-      priceCents: input.priceCents,
+      capacity:
+        input.capacity,
 
-      status: "PUBLISHED",
+      availableTickets:
+        input.capacity,
+
+      priceCents:
+        input.priceCents,
+
+      status:
+        "PUBLISHED",
     },
   });
 }
@@ -225,12 +251,13 @@ async function updateEvent(
   eventId: string,
   input: UpdateEventInput,
 ) {
-  const event = await prisma.event.findFirst({
-    where: {
-      id: eventId,
-      organizerId,
-    },
-  });
+  const event =
+    await prisma.event.findFirst({
+      where: {
+        id: eventId,
+        organizerId,
+      },
+    });
 
   if (!event) {
     throw new AppError(
@@ -240,7 +267,9 @@ async function updateEvent(
     );
   }
 
-  if (event.status !== "PUBLISHED") {
+  if (
+    event.status !== "PUBLISHED"
+  ) {
     throw new AppError(
       "Apenas sessões publicadas podem ser alteradas.",
       409,
@@ -254,19 +283,28 @@ async function updateEvent(
     },
 
     data: {
-      ...(input.priceCents !== undefined && {
-        priceCents: input.priceCents,
-      }),
+      ...(
+        input.priceCents !==
+          undefined && {
+          priceCents:
+            input.priceCents,
+        }
+      ),
 
-      ...(input.addCapacity !== undefined && {
-        capacity: {
-          increment: input.addCapacity,
-        },
+      ...(
+        input.addCapacity !==
+          undefined && {
+          capacity: {
+            increment:
+              input.addCapacity,
+          },
 
-        availableTickets: {
-          increment: input.addCapacity,
-        },
-      }),
+          availableTickets: {
+            increment:
+              input.addCapacity,
+          },
+        }
+      ),
     },
   });
 }
