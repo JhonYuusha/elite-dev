@@ -1,22 +1,41 @@
-import { useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useState,
+  type ReactNode,
+} from "react";
 
-import { api } from "../services/api";
-import type { LoginResponse, User } from "../types/auth";
+import { queryClient } from "../lib/query-client";
+import {
+  api,
+  AUTH_EXPIRED_EVENT,
+} from "../services/api";
+
+import type {
+  LoginResponse,
+  User,
+} from "../types/auth";
+
 import { AuthContext } from "./AuthContext";
 
-function loadStoredUser(): User | null {
-  const stored = localStorage.getItem("elite-dev-user");
+function clearStoredSession() {
+  localStorage.removeItem("elite-dev-token");
+  localStorage.removeItem("elite-dev-user");
+}
 
-  if (!stored) {
+function loadStoredUser(): User | null {
+  const storedUser = localStorage.getItem("elite-dev-user");
+  const storedToken = localStorage.getItem("elite-dev-token");
+
+  if (!storedUser || !storedToken) {
+    clearStoredSession();
     return null;
   }
 
   try {
-    return JSON.parse(stored) as User;
+    return JSON.parse(storedUser) as User;
   } catch {
-    localStorage.removeItem("elite-dev-user");
-    localStorage.removeItem("elite-dev-token");
-
+    clearStoredSession();
     return null;
   }
 }
@@ -29,6 +48,30 @@ export function AuthProvider({
   const [user, setUser] = useState<User | null>(
     () => loadStoredUser(),
   );
+
+  const logout = useCallback(() => {
+    clearStoredSession();
+    queryClient.clear();
+    setUser(null);
+  }, []);
+
+  useEffect(() => {
+    function handleExpiredSession() {
+      logout();
+    }
+
+    window.addEventListener(
+      AUTH_EXPIRED_EVENT,
+      handleExpiredSession,
+    );
+
+    return () => {
+      window.removeEventListener(
+        AUTH_EXPIRED_EVENT,
+        handleExpiredSession,
+      );
+    };
+  }, [logout]);
 
   async function login(
     email: string,
@@ -52,16 +95,10 @@ export function AuthProvider({
       JSON.stringify(data.user),
     );
 
+    queryClient.clear();
     setUser(data.user);
 
     return data.user;
-  }
-
-  function logout() {
-    localStorage.removeItem("elite-dev-token");
-    localStorage.removeItem("elite-dev-user");
-
-    setUser(null);
   }
 
   return (
