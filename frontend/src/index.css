@@ -2545,3 +2545,13 @@ input {
     font-size: 1rem;
   }
 }
+.route-loading {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 32px;
+}
+
+.route-loading .state-card {
+  width: min(100%, 720px);
+}

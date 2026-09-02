@@ -1,51 +1,126 @@
-import { BrowserRouter, Navigate, Route, Routes,} from "react-router-dom";
+import {
+  Suspense,
+  lazy,
+} from "react";
+import {
+  BrowserRouter,
+  Navigate,
+  Route,
+  Routes,
+} from "react-router-dom";
+
 import { AuthProvider } from "./context/AuthProvider";
-import { HomePage } from "./pages/HomePage";
-import { LoginPage } from "./pages/LoginPage";
-import { EventDetailsPage } from "./pages/EventDetailsPage";
-import { CheckoutPage } from "./pages/CheckoutPage";
-import { MyTicketsPage } from "./pages/MyTicketsPage";
-import { SharedTicketPage } from "./pages/SharedTicketPage";
-import { GatePage } from "./pages/GatePage";
-import { OrganizerPage } from "./pages/OrganizerPage";
+import { LoadingState } from "./components/ui/LoadingState";
+
+const HomePage = lazy(() =>
+  import("./pages/HomePage").then((module) => ({
+    default: module.HomePage,
+  })),
+);
+
+const LoginPage = lazy(() =>
+  import("./pages/LoginPage").then((module) => ({
+    default: module.LoginPage,
+  })),
+);
+
+const EventDetailsPage = lazy(() =>
+  import("./pages/EventDetailsPage").then((module) => ({
+    default: module.EventDetailsPage,
+  })),
+);
+
+const CheckoutPage = lazy(() =>
+  import("./pages/CheckoutPage").then((module) => ({
+    default: module.CheckoutPage,
+  })),
+);
+
+const MyTicketsPage = lazy(() =>
+  import("./pages/MyTicketsPage").then((module) => ({
+    default: module.MyTicketsPage,
+  })),
+);
+
+const SharedTicketPage = lazy(() =>
+  import("./pages/SharedTicketPage").then((module) => ({
+    default: module.SharedTicketPage,
+  })),
+);
+
+const GatePage = lazy(() =>
+  import("./pages/GatePage").then((module) => ({
+    default: module.GatePage,
+  })),
+);
+
+const OrganizerPage = lazy(() =>
+  import("./pages/OrganizerPage").then((module) => ({
+    default: module.OrganizerPage,
+  })),
+);
 
 function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <Routes>
-          <Route path="/" element={<HomePage />} />
+        <Suspense
+          fallback={
+            <main className="route-loading">
+              <LoadingState
+                title="ELITE / TICKETS"
+                message="Carregando página..."
+              />
+            </main>
+          }
+        >
+          <Routes>
+            <Route
+              path="/"
+              element={<HomePage />}
+            />
 
-          <Route path="/login" element={<LoginPage />} />
+            <Route
+              path="/login"
+              element={<LoginPage />}
+            />
 
-          <Route 
-          path="/events/:id" 
-          element={<EventDetailsPage />} />
+            <Route
+              path="/events/:id"
+              element={<EventDetailsPage />}
+            />
 
-          <Route 
-          path="/tickets" 
-          element={<MyTicketsPage />} />
+            <Route
+              path="/checkout/:id"
+              element={<CheckoutPage />}
+            />
 
-          <Route
-            path="/organizer"
-            element={<OrganizerPage />}
-          />
+            <Route
+              path="/tickets"
+              element={<MyTicketsPage />}
+            />
 
-          <Route
-            path="/gate"
-            element={<GatePage />}
-          />
+            <Route
+              path="/shared/:token"
+              element={<SharedTicketPage />}
+            />
 
-          <Route path="*" element={<Navigate to="/" replace />} />
+            <Route
+              path="/organizer"
+              element={<OrganizerPage />}
+            />
 
-          <Route 
-          path="/checkout/:id" 
-          element={<CheckoutPage />} />
+            <Route
+              path="/gate"
+              element={<GatePage />}
+            />
 
-          <Route
-          path="/shared/:token"
-          element={<SharedTicketPage />} />
-        </Routes>
+            <Route
+              path="*"
+              element={<Navigate to="/" replace />}
+            />
+          </Routes>
+        </Suspense>
       </AuthProvider>
     </BrowserRouter>
   );
