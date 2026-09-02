@@ -2,6 +2,7 @@ import type { ErrorRequestHandler } from "express";
 import { ZodError } from "zod";
 
 import { AppError } from "../errors/app-error.js";
+import { GateError } from "../errors/gate-error.js";
 
 export const errorHandler: ErrorRequestHandler = (
   error,
@@ -16,6 +17,19 @@ export const errorHandler: ErrorRequestHandler = (
         field: issue.path.join("."),
         message: issue.message,
       })),
+    });
+
+    return;
+  }
+
+  if (error instanceof GateError) {
+    res.status(error.statusCode).json({
+      status: error.gateStatus,
+      message: error.message,
+
+      ...(error.validatedAt && {
+        validatedAt: error.validatedAt,
+      }),
     });
 
     return;
