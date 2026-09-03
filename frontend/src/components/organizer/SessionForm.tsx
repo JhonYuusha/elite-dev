@@ -1,8 +1,8 @@
 import { useState, type FormEvent } from "react";
 
 import type { CatalogMovie } from "../../types/catalog";
-import { parseMoneyToCents } from "../../utils/money";
 import { getMinDateTimeLocal } from "../../utils/date";
+import { parseMoneyToCents } from "../../utils/money";
 
 export type SessionFormData = {
   externalId: string;
@@ -60,9 +60,7 @@ export function SessionForm({
       Number.isNaN(parsedStartsAt.getTime()) ||
       parsedStartsAt <= new Date()
     ) {
-      setValidationError(
-        "Escolha uma data e horário futuros para a sessão.",
-      );
+      setValidationError("Escolha uma data e horário futuros para a sessão.");
       return;
     }
 
@@ -96,17 +94,20 @@ export function SessionForm({
     <div className="session-column">
       <div className="workspace-heading">
         <span>02</span>
-
         <div>
-          <p>CONFIGURE A EXIBIÇÃO</p>
-          <strong>Dados da sessão</strong>
+          <p>NOVA SESSÃO</p>
+          <strong>Configure a exibição</strong>
         </div>
+      </div>
+
+      <div className="session-selection-status">
+        <span>FILME SELECIONADO</span>
+        <strong>{selectedMovie?.title ?? "Aguardando seleção"}</strong>
       </div>
 
       <form className="session-form" onSubmit={handleSubmit}>
         <label>
           <span>DATA E HORÁRIO</span>
-
           <input
             type="datetime-local"
             value={startsAt}
@@ -117,7 +118,6 @@ export function SessionForm({
 
         <label>
           <span>LOCAL</span>
-
           <input
             type="text"
             placeholder="Ex.: Cine Elite"
@@ -128,7 +128,6 @@ export function SessionForm({
 
         <label>
           <span>ENDEREÇO</span>
-
           <input
             type="text"
             placeholder="Ex.: Uberlândia - MG"
@@ -140,7 +139,6 @@ export function SessionForm({
         <div className="session-form-row">
           <label>
             <span>CAPACIDADE</span>
-
             <input
               type="number"
               min="1"
@@ -151,7 +149,6 @@ export function SessionForm({
 
           <label>
             <span>PREÇO / R$</span>
-
             <input
               type="text"
               inputMode="decimal"
@@ -172,10 +169,8 @@ export function SessionForm({
           className="publish-button"
           disabled={!selectedMovie || publishing}
         >
-          <span>
-            {publishing ? "PUBLICANDO..." : "PUBLICAR NA PROGRAMAÇÃO"}
-          </span>
-          <span>→</span>
+          <span>{publishing ? "PUBLICANDO..." : "PUBLICAR SESSÃO"}</span>
+          <span>↗</span>
         </button>
       </form>
     </div>

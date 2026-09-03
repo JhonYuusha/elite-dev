@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
+import { motion } from "motion/react";
 
 import { CatalogSearch } from "../components/organizer/CatalogSearch";
 import { OrganizerEventList } from "../components/organizer/OrganizerEventList";
@@ -12,13 +13,15 @@ import { LoadingState } from "../components/ui/LoadingState";
 
 import { useAuth } from "../context/useAuth";
 import { useOrganizerEvents } from "../hooks/organizer/useOrganizerEvents";
+import { editorialEase } from "../lib/motion";
 
 import type { CatalogMovie } from "../types/catalog";
+
+import "../styles/organizer-v2.css";
 
 export function OrganizerPage() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-
   const isOrganizer = user?.role === "ORGANIZER";
 
   const {
@@ -35,13 +38,8 @@ export function OrganizerPage() {
   const [formError, setFormError] = useState("");
   const [success, setSuccess] = useState("");
 
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
-
-  if (!isOrganizer) {
-    return <Navigate to="/" replace />;
-  }
+  if (!user) return <Navigate to="/login" replace />;
+  if (!isOrganizer) return <Navigate to="/" replace />;
 
   async function publishEvent(data: SessionFormData): Promise<boolean> {
     try {
@@ -50,10 +48,7 @@ export function OrganizerPage() {
 
       const createdEvent = await createEvent(data);
 
-      setSuccess(
-        `${createdEvent.title} foi publicado na programação.`,
-      );
-
+      setSuccess(`${createdEvent.title} foi publicado na programação.`);
       setSelectedMovie(null);
 
       return true;
@@ -75,46 +70,69 @@ export function OrganizerPage() {
 
   return (
     <main className="organizer-page">
-      <header className="organizer-header">
+      <motion.header
+        className="organizer-header"
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: editorialEase }}
+      >
         <Link to="/" className="brand">
-          ELITE
-          <span>/TICKETS</span>
+          ELITE<span>/TICKETS</span>
         </Link>
 
         <nav>
           <span className="organizer-user">{user.name}</span>
           <Link to="/">Ver programação</Link>
-
-          <button
-            type="button"
-            className="logout-button"
-            onClick={handleLogout}
-          >
+          <button type="button" className="logout-button" onClick={handleLogout}>
             Sair
           </button>
         </nav>
-      </header>
+      </motion.header>
 
       <section className="organizer-intro">
         <div>
-          <p className="eyebrow">
-            PROGRAMAÇÃO / ORGANIZADOR
-          </p>
+          <motion.p
+            className="eyebrow"
+            initial={{ opacity: 0, x: -12 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.08, duration: 0.5, ease: editorialEase }}
+          >
+            PROGRAMAÇÃO / OPERAÇÃO
+          </motion.p>
 
-          <h1>
-            MONTE SUA
-            <br />
-            PRÓXIMA SESSÃO.
-          </h1>
+          <div className="organizer-title-mask">
+            <motion.h1
+              initial={{ y: "105%" }}
+              animate={{ y: 0 }}
+              transition={{ delay: 0.12, duration: 0.8, ease: editorialEase }}
+            >
+              GERENCIE AS
+              <br />
+              PRÓXIMAS SESSÕES.
+            </motion.h1>
+          </div>
         </div>
 
-        <p>
-          O filme vem do catálogo TMDb. Data, local, capacidade e preço
-          pertencem à sua sessão.
-        </p>
+        <motion.div
+          className="organizer-intro-aside"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3, duration: 0.55, ease: editorialEase }}
+        >
+          <span>FLUXO / 01—02</span>
+          <p>
+            Escolha um título do catálogo e defina quando, onde e como ele
+            entra em cartaz.
+          </p>
+        </motion.div>
       </section>
 
-      <section className="programming-workspace">
+      <motion.section
+        className="programming-workspace"
+        initial={{ opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.22, duration: 0.65, ease: editorialEase }}
+      >
         <CatalogSearch
           selectedMovie={selectedMovie}
           onSelectMovie={(movie) => {
@@ -132,7 +150,7 @@ export function OrganizerPage() {
           success={success}
           onPublish={publishEvent}
         />
-      </section>
+      </motion.section>
 
       {loadError ? (
         <section className="organizer-events">
@@ -148,10 +166,7 @@ export function OrganizerPage() {
           <LoadingState variant="programming" />
         </section>
       ) : (
-        <OrganizerEventList
-          events={events}
-          onEventUpdate={updateEvent}
-        />
+        <OrganizerEventList events={events} onEventUpdate={updateEvent} />
       )}
     </main>
   );
