@@ -9,12 +9,9 @@ import type {
 
 export type CreateEventInput = {
   externalId: string;
-
   startsAt: string;
-
   venueName: string;
   venueAddress: string;
-
   capacity: number;
   priceCents: number;
 };
@@ -54,6 +51,9 @@ async function getOrganizerEvents(): Promise<
         error,
         "Não foi possível carregar suas sessões.",
       ),
+      {
+        cause: error,
+      },
     );
   }
 }
@@ -75,6 +75,9 @@ async function createEvent(
         error,
         "Não foi possível publicar o evento.",
       ),
+      {
+        cause: error,
+      },
     );
   }
 }
@@ -97,6 +100,9 @@ async function updateEvent(
         error,
         "Não foi possível atualizar a sessão.",
       ),
+      {
+        cause: error,
+      },
     );
   }
 }

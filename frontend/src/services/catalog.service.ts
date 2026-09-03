@@ -27,11 +27,17 @@ async function searchMovies(
       throw new Error(
         error.response?.data?.message ??
           "Não foi possível consultar o catálogo.",
+        {
+          cause: error,
+        },
       );
     }
 
     throw new Error(
       "Não foi possível consultar o catálogo.",
+      {
+        cause: error,
+      },
     );
   }
 }

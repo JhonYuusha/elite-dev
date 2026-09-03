@@ -1,7 +1,4 @@
-import {
-  Suspense,
-  lazy,
-} from "react";
+import { Suspense, lazy } from "react";
 import {
   BrowserRouter,
   Navigate,
@@ -9,8 +6,10 @@ import {
   Routes,
 } from "react-router-dom";
 
+import { RouteLoading } from "./components/ui/RouteLoading";
 import { AuthProvider } from "./context/AuthProvider";
-import { LoadingState } from "./components/ui/LoadingState";
+
+import "./styles/route-loading.css";
 
 const HomePage = lazy(() =>
   import("./pages/HomePage").then((module) => ({
@@ -64,61 +63,17 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <Suspense
-          fallback={
-            <main className="route-loading">
-              <LoadingState
-                title="ELITE / TICKETS"
-                message="Carregando página..."
-              />
-            </main>
-          }
-        >
+        <Suspense fallback={<RouteLoading />}>
           <Routes>
-            <Route
-              path="/"
-              element={<HomePage />}
-            />
-
-            <Route
-              path="/login"
-              element={<LoginPage />}
-            />
-
-            <Route
-              path="/events/:id"
-              element={<EventDetailsPage />}
-            />
-
-            <Route
-              path="/checkout/:id"
-              element={<CheckoutPage />}
-            />
-
-            <Route
-              path="/tickets"
-              element={<MyTicketsPage />}
-            />
-
-            <Route
-              path="/shared/:token"
-              element={<SharedTicketPage />}
-            />
-
-            <Route
-              path="/organizer"
-              element={<OrganizerPage />}
-            />
-
-            <Route
-              path="/gate"
-              element={<GatePage />}
-            />
-
-            <Route
-              path="*"
-              element={<Navigate to="/" replace />}
-            />
+            <Route path="/" element={<HomePage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/events/:id" element={<EventDetailsPage />} />
+            <Route path="/checkout/:id" element={<CheckoutPage />} />
+            <Route path="/tickets" element={<MyTicketsPage />} />
+            <Route path="/shared/:token" element={<SharedTicketPage />} />
+            <Route path="/organizer" element={<OrganizerPage />} />
+            <Route path="/gate" element={<GatePage />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>
       </AuthProvider>
