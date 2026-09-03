@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-
+import { LoadingState } from "../components/ui/LoadingState";
 import { api } from "../services/api";
 import { useAuth } from "../context/useAuth";
 import type { Event } from "../types/event";
@@ -62,12 +62,20 @@ export function HomePage() {
   const remainingEvents = filteredEvents.slice(1);
 
   if (loading) {
-    return (
-      <main className="home-loading">
-        <span>Carregando programação...</span>
-      </main>
-    );
-  }
+  return (
+    <main className="home-page">
+      <header className="home-header">
+        <Link to="/" className="brand">
+          ELITE<span>/TICKETS</span>
+        </Link>
+      </header>
+
+      <section className="home-intro">
+        <LoadingState variant="home" />
+      </section>
+    </main>
+  );
+ }
 
   return (
     <main className="home-page">

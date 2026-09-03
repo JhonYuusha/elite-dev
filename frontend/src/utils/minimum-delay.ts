@@ -1,6 +1,6 @@
 export async function waitForMinimumDuration(
   startedAt: number,
-  minimumDuration = 700,
+  minimumDuration = 900,
 ) {
   const elapsed = performance.now() - startedAt;
   const remaining = minimumDuration - elapsed;

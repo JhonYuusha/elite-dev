@@ -145,10 +145,7 @@ export function OrganizerPage() {
         </section>
       ) : isLoading ? (
         <section className="organizer-events">
-          <LoadingState
-            title="SUAS SESSÕES"
-            message="Carregando programação..."
-          />
+          <LoadingState variant="programming" />
         </section>
       ) : (
         <OrganizerEventList

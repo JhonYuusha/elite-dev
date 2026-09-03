@@ -6,6 +6,7 @@ import App from "./App";
 import { queryClient } from "./lib/query-client";
 
 import "./index.css";
+import "./styles/states.css";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
