@@ -1,27 +1,36 @@
-import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import {useEffect, useState, } from "react";
+import {Link, useNavigate, useParams, } from "react-router-dom";
 import axios from "axios";
-
-import { api } from "../services/api";
+import { LoadingState } from "../components/ui/LoadingState";
 import { useAuth } from "../context/useAuth";
+import { api } from "../services/api";
 import type { Event } from "../types/event";
+import { waitForMinimumDuration } from "../utils/minimum-delay";
 
-function formatPrice(priceCents: number) {
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  }).format(priceCents / 100);
+function formatPrice(
+  priceCents: number,
+) {
+  return new Intl.NumberFormat(
+    "pt-BR",
+    {
+      style: "currency",
+      currency: "BRL",
+    },
+  ).format(priceCents / 100);
 }
 
 function formatDate(date: string) {
-  return new Intl.DateTimeFormat("pt-BR", {
-    weekday: "long",
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(date));
+  return new Intl.DateTimeFormat(
+    "pt-BR",
+    {
+      weekday: "long",
+      day: "2-digit",
+      month: "long",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    },
+  ).format(new Date(date));
 }
 
 type ReservationResponse = {
@@ -32,30 +41,56 @@ type ReservationResponse = {
 };
 
 export function EventDetailsPage() {
-  const { id } = useParams<{ id: string }>();
+  const { id } = useParams<{
+    id: string;
+  }>();
+
   const navigate = useNavigate();
+
   const { user } = useAuth();
 
-  const [event, setEvent] = useState<Event | null>(null);
-  const [quantity, setQuantity] = useState(1);
-  const [loading, setLoading] = useState(true);
-  const [reserving, setReserving] = useState(false);
-  const [error, setError] = useState("");
+  const [event, setEvent] =
+    useState<Event | null>(null);
+
+  const [quantity, setQuantity] =
+    useState(1);
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [reserving, setReserving] =
+    useState(false);
+
+  const [error, setError] =
+    useState("");
 
   useEffect(() => {
     async function loadEvent() {
+      const startedAt =
+        performance.now();
+
       try {
-        const { data } = await api.get<Event>(`/events/${id}`);
+        const { data } =
+          await api.get<Event>(
+            `/events/${id}`,
+          );
+
         setEvent(data);
       } catch {
-        setError("Evento não encontrado.");
+        setError(
+          "Evento não encontrado.",
+        );
       } finally {
+        await waitForMinimumDuration(
+          startedAt,
+        );
+
         setLoading(false);
       }
     }
 
     if (id) {
-      loadEvent();
+      void loadEvent();
     }
   }, [id]);
 
@@ -70,7 +105,10 @@ export function EventDetailsPage() {
     }
 
     if (user.role !== "CLIENT") {
-      setError("Entre com uma conta de cliente para reservar ingressos.");
+      setError(
+        "Entre com uma conta de cliente para reservar ingressos.",
+      );
+
       return;
     }
 
@@ -78,20 +116,31 @@ export function EventDetailsPage() {
       setReserving(true);
       setError("");
 
-      const { data } = await api.post<ReservationResponse>("/reservations", {
-        eventId: event.id,
-        quantity,
-      });
+      const { data } =
+        await api.post<ReservationResponse>(
+          "/reservations",
+          {
+            eventId: event.id,
+            quantity,
+          },
+        );
 
-      navigate(`/checkout/${data.id}`);
+      navigate(
+        `/checkout/${data.id}`,
+      );
     } catch (requestError) {
-      if (axios.isAxiosError(requestError)) {
+      if (
+        axios.isAxiosError(requestError)
+      ) {
         setError(
-          requestError.response?.data?.message ??
+          requestError.response
+            ?.data?.message ??
             "Não foi possível realizar a reserva.",
         );
       } else {
-        setError("Não foi possível realizar a reserva.");
+        setError(
+          "Não foi possível realizar a reserva.",
+        );
       }
     } finally {
       setReserving(false);
@@ -100,8 +149,29 @@ export function EventDetailsPage() {
 
   if (loading) {
     return (
-      <main className="details-state">
-        <p>CARREGANDO SESSÃO...</p>
+      <main className="event-details-page">
+        <header className="details-header">
+          <Link
+            to="/"
+            className="brand"
+          >
+            ELITE
+            <span>/TICKETS</span>
+          </Link>
+
+          <Link
+            to="/"
+            className="back-link"
+          >
+            ← PROGRAMAÇÃO
+          </Link>
+        </header>
+
+        <section className="event-details">
+          <LoadingState
+            variant="event"
+          />
+        </section>
       </main>
     );
   }
@@ -109,22 +179,35 @@ export function EventDetailsPage() {
   if (!event) {
     return (
       <main className="details-state">
-        <p>EVENTO NÃO ENCONTRADO</p>
-        <Link to="/">Voltar para programação</Link>
+        <p>
+          EVENTO NÃO ENCONTRADO
+        </p>
+
+        <Link to="/">
+          Voltar para programação
+        </Link>
       </main>
     );
   }
 
-  const soldOut = event.availableTickets <= 0;
+  const soldOut =
+    event.availableTickets <= 0;
 
   return (
     <main className="event-details-page">
       <header className="details-header">
-        <Link to="/" className="brand">
-          ELITE<span>/TICKETS</span>
+        <Link
+          to="/"
+          className="brand"
+        >
+          ELITE
+          <span>/TICKETS</span>
         </Link>
 
-        <Link to="/" className="back-link">
+        <Link
+          to="/"
+          className="back-link"
+        >
           ← PROGRAMAÇÃO
         </Link>
       </header>
@@ -138,14 +221,18 @@ export function EventDetailsPage() {
             />
           ) : (
             <div className="poster-placeholder">
-              <span>SEM PÔSTER</span>
+              <span>
+                SEM PÔSTER
+              </span>
             </div>
           )}
         </div>
 
         <div className="details-content">
           <p className="details-date">
-            {formatDate(event.startsAt)}
+            {formatDate(
+              event.startsAt,
+            )}
           </p>
 
           <h1>{event.title}</h1>
@@ -158,21 +245,37 @@ export function EventDetailsPage() {
           <div className="details-location">
             <span>ONDE</span>
 
-            <strong>{event.venueName}</strong>
+            <strong>
+              {event.venueName}
+            </strong>
 
             {event.venueAddress && (
-              <p>{event.venueAddress}</p>
+              <p>
+                {event.venueAddress}
+              </p>
             )}
           </div>
 
           <div className="ticket-selector">
             <div className="ticket-selector-heading">
               <div>
-                <span>INGRESSO / PISTA</span>
-                <strong>{formatPrice(event.priceCents)}</strong>
+                <span>
+                  INGRESSO / PISTA
+                </span>
+
+                <strong>
+                  {formatPrice(
+                    event.priceCents,
+                  )}
+                </strong>
               </div>
 
-              <p>{event.availableTickets} disponíveis</p>
+              <p>
+                {
+                  event.availableTickets
+                }{" "}
+                disponíveis
+              </p>
             </div>
 
             {!soldOut && (
@@ -182,25 +285,37 @@ export function EventDetailsPage() {
                     type="button"
                     aria-label="Diminuir quantidade"
                     onClick={() =>
-                      setQuantity((current) =>
-                        Math.max(1, current - 1),
+                      setQuantity(
+                        (current) =>
+                          Math.max(
+                            1,
+                            current -
+                              1,
+                          ),
                       )
                     }
                   >
                     −
                   </button>
 
-                  <strong>{quantity}</strong>
+                  <strong>
+                    {quantity}
+                  </strong>
 
                   <button
                     type="button"
                     aria-label="Aumentar quantidade"
                     onClick={() =>
-                      setQuantity((current) =>
-                        Math.min(
-                          Math.min(event.availableTickets, 6),
-                          current + 1,
-                        ),
+                      setQuantity(
+                        (current) =>
+                          Math.min(
+                            Math.min(
+                              event.availableTickets,
+                              6,
+                            ),
+                            current +
+                              1,
+                          ),
                       )
                     }
                   >
@@ -213,7 +328,8 @@ export function EventDetailsPage() {
 
                   <strong>
                     {formatPrice(
-                      event.priceCents * quantity,
+                      event.priceCents *
+                        quantity,
                     )}
                   </strong>
                 </div>
@@ -226,44 +342,69 @@ export function EventDetailsPage() {
 
                 {!user && (
                   <div className="login-hint">
-                    <span>QUER RESERVAR?</span>
+                    <span>
+                      QUER RESERVAR?
+                    </span>
 
                     <p>
-                      Entre como cliente para continuar com a compra.
+                      Entre como cliente
+                      para continuar com a
+                      compra.
                     </p>
 
                     <button
                       type="button"
-                      onClick={() => navigate("/login")}
+                      onClick={() =>
+                        navigate(
+                          "/login",
+                        )
+                      }
                     >
                       FAZER LOGIN →
                     </button>
                   </div>
                 )}
 
-                {user && user.role !== "CLIENT" && (
-                  <div className="login-hint">
-                    <span>CONTA DE {user.role}</span>
+                {user &&
+                  user.role !==
+                    "CLIENT" && (
+                    <div className="login-hint">
+                      <span>
+                        CONTA DE{" "}
+                        {user.role}
+                      </span>
 
-                    <p>
-                      Para comprar ingressos, entre com uma conta de cliente.
-                    </p>
+                      <p>
+                        Para comprar
+                        ingressos, entre
+                        com uma conta de
+                        cliente.
+                      </p>
 
-                    <button
-                      type="button"
-                      onClick={() => navigate("/login")}
-                    >
-                      TROCAR DE CONTA →
-                    </button>
-                  </div>
-                )}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          navigate(
+                            "/login",
+                          )
+                        }
+                      >
+                        TROCAR DE CONTA →
+                      </button>
+                    </div>
+                  )}
 
-                {user?.role === "CLIENT" && (
+                {user?.role ===
+                  "CLIENT" && (
                   <button
                     type="button"
                     className="reserve-button"
-                    disabled={reserving}
-                    onClick={handleReservation}
+                    disabled={
+                      reserving
+                    }
+                    onClick={
+                      handleReservation
+                    }
                   >
                     <span>
                       {reserving
@@ -282,7 +423,9 @@ export function EventDetailsPage() {
                 <span>ESGOTADO</span>
 
                 <p>
-                  Não há mais ingressos disponíveis para esta sessão.
+                  Não há mais ingressos
+                  disponíveis para esta
+                  sessão.
                 </p>
               </div>
             )}
