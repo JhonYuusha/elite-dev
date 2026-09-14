@@ -7,12 +7,70 @@ export type CreateReservationInput = {
   quantity: number;
 };
 
+export type Reservation = {
+  id: string;
+  quantity: number;
+  totalCents: number;
+  status:
+    | "PENDING"
+    | "PAID"
+    | "PAYMENT_FAILED"
+    | "CANCELLED";
+
+  event: {
+    id: string;
+    title: string;
+    imageUrl: string | null;
+    startsAt: string;
+    venueName: string;
+    venueAddress: string | null;
+    priceCents: number;
+  };
+};
+
 export type ReservationResponse = {
   id: string;
   quantity: number;
   totalCents: number;
   status: string;
 };
+
+function getReservationErrorMessage(
+  error: unknown,
+  fallbackMessage: string,
+) {
+  if (axios.isAxiosError(error)) {
+    return (
+      error.response?.data?.message ??
+      fallbackMessage
+    );
+  }
+
+  return fallbackMessage;
+}
+
+async function getReservationById(
+  reservationId: string,
+): Promise<Reservation> {
+  try {
+    const { data } =
+      await api.get<Reservation>(
+        `/reservations/${reservationId}`,
+      );
+
+    return data;
+  } catch (error) {
+    throw new Error(
+      getReservationErrorMessage(
+        error,
+        "Não foi possível carregar esta reserva.",
+      ),
+      {
+        cause: error,
+      },
+    );
+  }
+}
 
 async function createReservation(
   input: CreateReservationInput,
@@ -26,18 +84,11 @@ async function createReservation(
 
     return data;
   } catch (error) {
-    if (axios.isAxiosError(error)) {
-      throw new Error(
-        error.response?.data?.message ??
-          "Não foi possível realizar a reserva.",
-        {
-          cause: error,
-        },
-      );
-    }
-
     throw new Error(
-      "Não foi possível realizar a reserva.",
+      getReservationErrorMessage(
+        error,
+        "Não foi possível realizar a reserva.",
+      ),
       {
         cause: error,
       },
@@ -46,5 +97,6 @@ async function createReservation(
 }
 
 export const reservationService = {
+  getReservationById,
   createReservation,
 };

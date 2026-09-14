@@ -1,40 +1,19 @@
-import {useEffect, useState, } from "react";
-import {Link, useNavigate, useParams, } from "react-router-dom";
-import axios from "axios";
+import { motion } from "motion/react";
+import {
+  Link,
+  useNavigate,
+  useParams,
+} from "react-router-dom";
+
 import { LoadingState } from "../components/ui/LoadingState";
-import { api } from "../services/api";
-import { waitForMinimumDuration } from "../utils/minimum-delay";
+import { usePayment } from "../hooks/payments/usePayment";
+import { useReservationDetails } from "../hooks/reservations/useReservationDetails";
+import { editorialEase } from "../lib/motion";
+import { queryClient } from "../lib/query-client";
+import { formatLongDate } from "../utils/date";
+import { formatMoney } from "../utils/money";
 
-type Reservation = {
-  id: string;
-  quantity: number;
-  totalCents: number;
-  status:
-    | "PENDING"
-    | "PAID"
-    | "PAYMENT_FAILED"
-    | "CANCELLED";
-
-  event: {
-    id: string;
-    title: string;
-    imageUrl: string | null;
-    startsAt: string;
-    venueName: string;
-    venueAddress: string | null;
-    priceCents: number;
-  };
-};
-
-function money(value: number) {
-  return new Intl.NumberFormat(
-    "pt-BR",
-    {
-      style: "currency",
-      currency: "BRL",
-    },
-  ).format(value / 100);
-}
+import "../styles/checkout-v2.css";
 
 export function CheckoutPage() {
   const { id } = useParams<{
@@ -43,54 +22,13 @@ export function CheckoutPage() {
 
   const navigate = useNavigate();
 
-  const [
-    reservation,
-    setReservation,
-  ] =
-    useState<Reservation | null>(
-      null,
-    );
+  const reservationQuery =
+    useReservationDetails(id);
 
-  const [loading, setLoading] =
-    useState(true);
+  const payment = usePayment();
 
-  const [
-    processing,
-    setProcessing,
-  ] = useState(false);
-
-  const [error, setError] =
-    useState("");
-
-  useEffect(() => {
-    async function loadReservation() {
-      const startedAt =
-        performance.now();
-
-      try {
-        const { data } =
-          await api.get<Reservation>(
-            `/reservations/${id}`,
-          );
-
-        setReservation(data);
-      } catch {
-        setError(
-          "Não foi possível carregar esta reserva.",
-        );
-      } finally {
-        await waitForMinimumDuration(
-          startedAt,
-        );
-
-        setLoading(false);
-      }
-    }
-
-    if (id) {
-      void loadReservation();
-    }
-  }, [id]);
+  const reservation =
+    reservationQuery.data;
 
   async function processPayment(
     result:
@@ -102,17 +40,17 @@ export function CheckoutPage() {
     }
 
     try {
-      setProcessing(true);
-      setError("");
-
-      await api.post(
-        `/payments/reservations/${reservation.id}/pay`,
-        {
-          result,
-        },
-      );
+      await payment.mutateAsync({
+        reservationId:
+          reservation.id,
+        result,
+      });
 
       if (result === "APPROVED") {
+        await queryClient.invalidateQueries({
+          queryKey: ["tickets"],
+        });
+
         navigate("/tickets", {
           state: {
             paymentApproved: true,
@@ -122,47 +60,28 @@ export function CheckoutPage() {
         return;
       }
 
-      setReservation({
-        ...reservation,
-        status: "PAYMENT_FAILED",
-      });
-    } catch (requestError) {
-      if (
-        axios.isAxiosError(requestError)
-      ) {
-        setError(
-          requestError.response
-            ?.data?.message ??
-            "Não foi possível processar o pagamento.",
-        );
-      } else {
-        setError(
-          "Não foi possível processar o pagamento.",
-        );
-      }
-    } finally {
-      setProcessing(false);
+      queryClient.setQueryData(
+        [
+          "reservations",
+          "details",
+          reservation.id,
+        ],
+        {
+          ...reservation,
+          status: "PAYMENT_FAILED",
+        },
+      );
+    } catch {
+      // O erro é exibido pelo estado da mutation.
     }
   }
 
-  if (loading) {
+  if (reservationQuery.isPending) {
     return (
-      <main className="checkout-page">
-        <header className="details-header">
-          <Link
-            to="/"
-            className="brand"
-          >
-            ELITE
-            <span>/TICKETS</span>
-          </Link>
+      <main className="checkout-v2-page">
+        <CheckoutHeader />
 
-          <span className="checkout-step">
-            02 / PAGAMENTO
-          </span>
-        </header>
-
-        <section className="checkout-layout">
+        <section className="checkout-v2-loading">
           <LoadingState
             variant="checkout"
           />
@@ -171,180 +90,328 @@ export function CheckoutPage() {
     );
   }
 
-  if (!reservation) {
+  if (
+    reservationQuery.isError ||
+    !reservation
+  ) {
     return (
-      <main className="checkout-state">
-        <p>
-          {error ||
-            "Reserva não encontrada."}
-        </p>
+      <main className="checkout-v2-page">
+        <CheckoutHeader />
 
-        <Link to="/">
-          VOLTAR PARA PROGRAMAÇÃO
-        </Link>
+        <section className="checkout-v2-state">
+          <p>RESERVA / ERRO</p>
+
+          <h1>
+            RESERVA
+            <br />
+            NÃO ENCONTRADA.
+          </h1>
+
+          <span>
+            {reservationQuery.error instanceof
+            Error
+              ? reservationQuery.error
+                  .message
+              : "Não foi possível carregar esta reserva."}
+          </span>
+
+          <Link to="/">
+            ← VOLTAR PARA PROGRAMAÇÃO
+          </Link>
+        </section>
       </main>
     );
   }
 
+  const paymentError =
+    payment.error instanceof Error
+      ? payment.error.message
+      : "";
+
+  const isPending =
+    reservation.status === "PENDING";
+
   return (
-    <main className="checkout-page">
-      <header className="details-header">
-        <Link
-          to="/"
-          className="brand"
-        >
-          ELITE
-          <span>/TICKETS</span>
-        </Link>
+    <main className="checkout-v2-page">
+      <CheckoutHeader />
 
-        <span className="checkout-step">
-          02 / PAGAMENTO
-        </span>
-      </header>
+      <motion.section
+        className="checkout-v2-layout"
+        initial={{
+          opacity: 0,
+          y: 24,
+        }}
+        animate={{
+          opacity: 1,
+          y: 0,
+          transition: {
+            duration: 0.65,
+            ease: editorialEase,
+          },
+        }}
+      >
+        <div className="checkout-v2-main">
+          <div className="checkout-v2-intro">
+            <p>
+              RESERVA CONFIRMADA / 02
+            </p>
 
-      <section className="checkout-layout">
-        <div className="checkout-copy">
-          <p className="eyebrow">
-            RESERVA CONFIRMADA
-          </p>
+            <h1>
+              ÚLTIMO
+              <br />
+              PASSO.
+            </h1>
 
-          <h1>
-            ÚLTIMO PASSO
-            <br />
-            ANTES DA SESSÃO.
-          </h1>
-
-          <p>
-            A cobrança abaixo é
-            simulada. Escolha aprovação
-            ou recusa para testar os
-            dois caminhos do checkout.
-          </p>
-        </div>
-
-        <aside className="checkout-ticket">
-          <div className="checkout-event">
-            {reservation.event
-              .imageUrl && (
-              <img
-                src={
-                  reservation.event
-                    .imageUrl
-                }
-                alt={
-                  reservation.event
-                    .title
-                }
-              />
-            )}
-
-            <div>
-              <span>EVENTO</span>
-
-              <h2>
-                {
-                  reservation.event
-                    .title
-                }
-              </h2>
-
-              <p>
-                {
-                  reservation.event
-                    .venueName
-                }
-              </p>
-            </div>
+            <span>
+              Sua sessão está reservada
+              temporariamente. Finalize a
+              simulação de pagamento para
+              emitir os ingressos.
+            </span>
           </div>
 
-          <div className="checkout-row">
-            <span>INGRESSOS</span>
+          <div className="checkout-v2-session">
+            <div className="checkout-v2-session-label">
+              <span>
+                SESSÃO / CONFIRMADA
+              </span>
+
+              <strong>
+                #
+                {reservation.id
+                  .slice(0, 8)
+                  .toUpperCase()}
+              </strong>
+            </div>
+
+            <div className="checkout-v2-session-content">
+              {reservation.event
+                .imageUrl ? (
+                <div className="checkout-v2-poster">
+                  <img
+                    src={
+                      reservation.event
+                        .imageUrl
+                    }
+                    alt={`Pôster de ${reservation.event.title}`}
+                  />
+                </div>
+              ) : (
+                <div className="checkout-v2-poster checkout-v2-poster-empty">
+                  SEM PÔSTER
+                </div>
+              )}
+
+              <div className="checkout-v2-event-copy">
+                <span>
+                  {formatLongDate(
+                    reservation.event
+                      .startsAt,
+                  )}
+                </span>
+
+                <h2>
+                  {
+                    reservation.event
+                      .title
+                  }
+                </h2>
+
+                <div>
+                  <strong>
+                    {
+                      reservation.event
+                        .venueName
+                    }
+                  </strong>
+
+                  {reservation.event
+                    .venueAddress && (
+                    <p>
+                      {
+                        reservation.event
+                          .venueAddress
+                      }
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <aside className="checkout-v2-summary">
+          <div className="checkout-v2-summary-top">
+            <div>
+              <span>RESUMO / COMPRA</span>
+
+              <strong>
+                {String(
+                  reservation.quantity,
+                ).padStart(2, "0")}{" "}
+                INGRESSOS
+              </strong>
+            </div>
+
+            <span>
+              {reservation.status}
+            </span>
+          </div>
+
+          <div className="checkout-v2-row">
+            <span>QUANTIDADE</span>
 
             <strong>
               {reservation.quantity}
             </strong>
           </div>
 
-          <div className="checkout-row">
+          <div className="checkout-v2-row">
             <span>
               VALOR UNITÁRIO
             </span>
 
             <strong>
-              {money(
+              {formatMoney(
                 reservation.event
                   .priceCents,
               )}
             </strong>
           </div>
 
-          <div className="checkout-total">
+          <div className="checkout-v2-row">
+            <span>TAXAS</span>
+
+            <strong>
+              {formatMoney(0)}
+            </strong>
+          </div>
+
+          <div className="checkout-v2-total">
             <span>TOTAL</span>
 
             <strong>
-              {money(
+              {formatMoney(
                 reservation.totalCents,
               )}
             </strong>
           </div>
 
-          {reservation.status ===
-          "PENDING" ? (
-            <>
-              {error && (
-                <p className="details-error">
-                  {error}
+          {isPending ? (
+            <div className="checkout-v2-payment">
+              <div className="checkout-v2-payment-heading">
+                <span>
+                  SIMULAÇÃO / PAGAMENTO
+                </span>
+
+                <p>
+                  Escolha aprovação ou
+                  recusa para testar os
+                  dois caminhos da
+                  aplicação.
+                </p>
+              </div>
+
+              {paymentError && (
+                <p className="checkout-v2-error">
+                  {paymentError}
                 </p>
               )}
 
               <button
                 type="button"
-                className="approve-payment"
-                disabled={processing}
+                className="checkout-v2-approve"
+                disabled={
+                  payment.isPending
+                }
                 onClick={() =>
                   processPayment(
                     "APPROVED",
                   )
                 }
               >
-                APROVAR PAGAMENTO
-                <span>→</span>
+                <span>
+                  {payment.isPending
+                    ? "PROCESSANDO..."
+                    : "APROVAR PAGAMENTO"}
+                </span>
+
+                <span>↗</span>
               </button>
 
               <button
                 type="button"
-                className="decline-payment"
-                disabled={processing}
+                className="checkout-v2-decline"
+                disabled={
+                  payment.isPending
+                }
                 onClick={() =>
                   processPayment(
                     "DECLINED",
                   )
                 }
               >
-                SIMULAR RECUSA
+                <span>
+                  SIMULAR RECUSA
+                </span>
+
+                <span>×</span>
               </button>
-            </>
+            </div>
           ) : (
-            <div className="payment-declined">
+            <div className="checkout-v2-declined">
               <span>
-                PAGAMENTO RECUSADO
+                PAGAMENTO / RECUSADO
               </span>
 
+              <strong>
+                RESERVA
+                <br />
+                ENCERRADA.
+              </strong>
+
               <p>
-                A reserva foi encerrada
-                e os ingressos voltaram
-                para o estoque.
+                Os ingressos foram
+                devolvidos ao estoque e
+                podem ser reservados
+                novamente.
               </p>
 
               <Link
                 to={`/events/${reservation.event.id}`}
               >
-                VOLTAR AO EVENTO →
+                <span>
+                  VOLTAR AO EVENTO
+                </span>
+
+                <span>↗</span>
               </Link>
             </div>
           )}
         </aside>
-      </section>
+      </motion.section>
     </main>
+  );
+}
+
+function CheckoutHeader() {
+  return (
+    <header className="checkout-v2-header">
+      <Link
+        to="/"
+        className="brand"
+      >
+        ELITE
+        <span>/TICKETS</span>
+      </Link>
+
+      <div className="checkout-v2-header-meta">
+        <span>
+          CHECKOUT / PAGAMENTO
+        </span>
+
+        <strong>02 / 03</strong>
+      </div>
+    </header>
   );
 }
