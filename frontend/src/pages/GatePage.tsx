@@ -1,56 +1,40 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import axios from "axios";
 
-import { api } from "../services/api";
+import { GateResultView } from "../components/gate/GateResultView";
+import { GateScanner } from "../components/gate/GateScanner";
 import { useAuth } from "../context/useAuth";
+import { useGateEvents } from "../hooks/gate/useGateEvents";
+import { useGateValidation } from "../hooks/gate/useGateValidation";
+import type { GateResult } from "../services/gate.service";
 
-type GateResult =
-  | {
-      status: "VALID";
-      message: string;
-      ticketId: string;
-      eventId: string;
-    }
-  | {
-      status: "INVALID" | "WRONG_EVENT" | "ALREADY_USED";
-      message: string;
-      validatedAt?: string;
-    };
-
-type EventOption = {
-  id: string;
-  title: string;
-  startsAt: string;
-};
+import "../styles/gate-v2.css";
 
 export function GatePage() {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const canUseGate = user?.role === "GATEKEEPER";
 
-  const controlsRef = useRef<{
-    stop: () => void;
-  } | null>(null);
+  const {
+    data: events = [],
+    isLoading: loadingEvents,
+    isError: eventsError,
+    error: eventsQueryError,
+    refetch: refetchEvents,
+  } = useGateEvents(canUseGate);
 
-  const scanningRef = useRef(false);
+  const validation = useGateValidation();
 
-  const [events, setEvents] = useState<EventOption[]>([]);
   const [eventId, setEventId] = useState("");
-
   const [manualCode, setManualCode] = useState("");
-
-  const [cameraActive, setCameraActive] = useState(false);
-  const [cameraStatus, setCameraStatus] = useState(
-    "Câmera desligada.",
-  );
-
-  const [lastRead, setLastRead] = useState("");
-
-  const [processing, setProcessing] = useState(false);
   const [result, setResult] = useState<GateResult | null>(null);
   const [error, setError] = useState("");
+
+  const selectedEventId = eventId || events[0]?.id || "";
+  const selectedEvent = events.find(
+    (event) => event.id === selectedEventId,
+  );
 
   useEffect(() => {
     if (!user) {
@@ -60,194 +44,55 @@ export function GatePage() {
 
     if (user.role !== "GATEKEEPER") {
       navigate("/");
-      return;
     }
-
-    async function loadEvents() {
-      try {
-        const { data } = await api.get<EventOption[]>("/events");
-
-        setEvents(data);
-
-        if (data.length > 0) {
-          setEventId(data[0].id);
-        }
-      } catch {
-        setError("Não foi possível carregar os eventos.");
-      }
-    }
-
-    loadEvents();
-
-    return () => {
-      controlsRef.current?.stop();
-      controlsRef.current = null;
-      scanningRef.current = false;
-    };
   }, [user, navigate]);
 
   async function validateCode(code: string) {
     const cleanCode = code.trim();
 
-    if (!cleanCode || !eventId || processing) {
+    if (
+      !cleanCode ||
+      !selectedEventId ||
+      validation.isPending
+    ) {
       return;
     }
 
     try {
-      setProcessing(true);
       setResult(null);
       setError("");
 
-      const { data } = await api.post<GateResult>(
-        "/gate/validate",
-        {
-          code: cleanCode,
-          eventId,
-        },
-      );
+      const response = await validation.mutateAsync({
+        code: cleanCode,
+        eventId: selectedEventId,
+      });
 
-      setResult(data);
+      setResult(response);
       setManualCode("");
     } catch (requestError) {
-      if (
-        axios.isAxiosError(requestError) &&
-        requestError.response?.data
-      ) {
-        setResult(requestError.response.data as GateResult);
-      } else {
-        setError("Não foi possível validar este ingresso.");
-      }
-    } finally {
-      setProcessing(false);
-    }
-  }
-
-  async function startCamera() {
-    if (!videoRef.current || cameraActive) {
-      return;
-    }
-
-    try {
-      setError("");
-      setResult(null);
-      setLastRead("");
-
-      setCameraStatus("Solicitando acesso à câmera...");
-
-      const { BrowserQRCodeReader } = await import("@zxing/browser");
-
-      const reader = new BrowserQRCodeReader();
-
-      scanningRef.current = true;
-
-      const controls = await reader.decodeFromConstraints(
-        {
-          audio: false,
-
-          video: {
-            facingMode: {
-              ideal: "environment",
-            },
-
-            width: {
-              ideal: 1280,
-            },
-
-            height: {
-              ideal: 720,
-            },
-          },
-        },
-
-        videoRef.current,
-
-        (scanResult, scanError) => {
-          if (!scanningRef.current) {
-            return;
-          }
-
-          if (scanResult) {
-            const text = scanResult.getText();
-
-            console.log("QR lido pela câmera:", text);
-
-            setLastRead(text);
-            setCameraStatus("QR detectado.");
-
-            scanningRef.current = false;
-
-            controlsRef.current?.stop();
-            controlsRef.current = null;
-
-            setCameraActive(false);
-
-            void validateCode(text);
-
-            return;
-          }
-
-          /*
-           * O ZXing gera erros constantemente enquanto procura
-           * um QR nos frames da câmera. Isso é normal.
-           *
-           * Por isso não mostramos cada erro na interface.
-           */
-          if (scanError) {
-            setCameraStatus(
-              "Câmera ativa — procurando QR Code...",
-            );
-          }
-        },
-      );
-
-      controlsRef.current = controls;
-
-      setCameraActive(true);
-      setCameraStatus(
-        "Câmera ativa — procurando QR Code...",
-      );
-    } catch (cameraError) {
-      console.error(
-        "Erro ao iniciar leitor de QR:",
-        cameraError,
-      );
-
-      scanningRef.current = false;
-
-      controlsRef.current?.stop();
-      controlsRef.current = null;
-
-      setCameraActive(false);
-
-      setCameraStatus("Não foi possível iniciar a câmera.");
-
       setError(
-        "Não foi possível acessar ou iniciar a câmera. Use a digitação manual como alternativa.",
+        requestError instanceof Error
+          ? requestError.message
+          : "Não foi possível validar este ingresso.",
       );
     }
-  }
-
-  function stopCamera() {
-    scanningRef.current = false;
-
-    controlsRef.current?.stop();
-    controlsRef.current = null;
-
-    setCameraActive(false);
-    setCameraStatus("Câmera desligada.");
   }
 
   function resetValidation() {
+    validation.reset();
     setResult(null);
     setError("");
     setManualCode("");
-    setLastRead("");
-    setCameraStatus("Câmera desligada.");
   }
 
-  const resultClass = result
-    ? `gate-result gate-result-${result.status.toLowerCase()}`
-    : "";
+  function changeEvent(nextEventId: string) {
+    resetValidation();
+    setEventId(nextEventId);
+  }
+
+  if (!canUseGate) {
+    return null;
+  }
 
   return (
     <main className="gate-page">
@@ -273,24 +118,38 @@ export function GatePage() {
             LIBERADA?
           </h1>
 
-          <p>
-            Selecione o evento da entrada e leia o QR do
-            ingresso. A digitação manual permanece
-            disponível como contingência.
+          <p className="gate-description">
+            Selecione a sessão da portaria e leia o QR do
+            ingresso. O código manual permanece disponível
+            como contingência.
           </p>
 
           <label className="gate-event-select">
-            <span>
-              EVENTO DA PORTARIA
-            </span>
+            <span>EVENTO DA PORTARIA</span>
 
             <select
-              value={eventId}
-              onChange={(event) => {
-                setEventId(event.target.value);
-                resetValidation();
-              }}
+              value={selectedEventId}
+              disabled={
+                loadingEvents ||
+                events.length === 0
+              }
+              onChange={(event) =>
+                changeEvent(event.target.value)
+              }
             >
+              {loadingEvents && (
+                <option value="">
+                  CARREGANDO SESSÕES...
+                </option>
+              )}
+
+              {!loadingEvents &&
+                events.length === 0 && (
+                  <option value="">
+                    NENHUMA SESSÃO DISPONÍVEL
+                  </option>
+                )}
+
               {events.map((event) => (
                 <option
                   key={event.id}
@@ -301,83 +160,56 @@ export function GatePage() {
               ))}
             </select>
           </label>
+
+          {eventsError && (
+            <div className="gate-events-error">
+              <p>
+                {eventsQueryError instanceof Error
+                  ? eventsQueryError.message
+                  : "Não foi possível carregar os eventos."}
+              </p>
+
+              <button
+                type="button"
+                onClick={() => {
+                  void refetchEvents();
+                }}
+              >
+                TENTAR NOVAMENTE ↗
+              </button>
+            </div>
+          )}
+
+          {selectedEvent && (
+            <div className="gate-session-meta">
+              <span>
+                SESSÃO SELECIONADA
+              </span>
+
+              <strong>
+                {selectedEvent.title}
+              </strong>
+            </div>
+          )}
         </div>
 
         <div className="gate-terminal">
-          {!result && (
+          {!result ? (
             <>
-              <div className="gate-camera">
-                <video
-                  ref={videoRef}
-                  muted
-                  playsInline
-                  autoPlay
-                />
-
-                {!cameraActive && (
-                  <div className="gate-camera-placeholder">
-                    <span>LEITOR QR</span>
-
-                    <strong>
-                      CÂMERA INATIVA
-                    </strong>
-                  </div>
-                )}
-
-                {cameraActive && (
-                  <div className="gate-scan-frame">
-                    <span />
-                    <span />
-                    <span />
-                    <span />
-                  </div>
-                )}
-              </div>
-
-              <div className="gate-camera-status">
-                <span>
-                  {cameraActive ? "●" : "○"}
-                </span>
-
-                <p>{cameraStatus}</p>
-              </div>
-
-              {lastRead && (
-                <div className="gate-last-read">
-                  <span>
-                    ÚLTIMO QR DETECTADO
-                  </span>
-
-                  <code>
-                    {lastRead.slice(0, 36)}...
-                  </code>
-                </div>
-              )}
-
-              <div className="gate-camera-actions">
-                {!cameraActive ? (
-                  <button
-                    type="button"
-                    className="gate-primary"
-                    onClick={startCamera}
-                  >
-                    ATIVAR CÂMERA
-                    <span>◎</span>
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    className="gate-secondary"
-                    onClick={stopCamera}
-                  >
-                    DESATIVAR CÂMERA
-                  </button>
-                )}
-              </div>
+              <GateScanner
+                disabled={
+                  !selectedEventId ||
+                  validation.isPending
+                }
+                onRead={(code) => {
+                  void validateCode(code);
+                }}
+                onError={setError}
+              />
 
               <div className="gate-divider">
                 <span>
-                  OU DIGITE O CÓDIGO
+                  OU / CÓDIGO MANUAL
                 </span>
               </div>
 
@@ -385,16 +217,21 @@ export function GatePage() {
                 className="gate-manual"
                 onSubmit={(event) => {
                   event.preventDefault();
-
                   void validateCode(manualCode);
                 }}
               >
+                <label htmlFor="gate-code">
+                  CÓDIGO DO INGRESSO
+                </label>
+
                 <textarea
+                  id="gate-code"
                   value={manualCode}
+                  spellCheck={false}
+                  placeholder="Cole aqui o código completo do ingresso."
                   onChange={(event) =>
                     setManualCode(event.target.value)
                   }
-                  placeholder="Cole aqui o código manual do ingresso..."
                 />
 
                 <button
@@ -402,79 +239,31 @@ export function GatePage() {
                   className="gate-primary"
                   disabled={
                     !manualCode.trim() ||
-                    processing
+                    !selectedEventId ||
+                    validation.isPending
                   }
                 >
-                  {processing
-                    ? "VALIDANDO..."
-                    : "VALIDAR INGRESSO"}
+                  <span>
+                    {validation.isPending
+                      ? "VALIDANDO..."
+                      : "VALIDAR INGRESSO"}
+                  </span>
 
                   <span>→</span>
                 </button>
               </form>
+
+              {error && (
+                <p className="gate-error">
+                  {error}
+                </p>
+              )}
             </>
-          )}
-
-          {result && (
-            <div className={resultClass}>
-              <span className="gate-result-label">
-                RESULTADO DA LEITURA
-              </span>
-
-              <strong className="gate-result-status">
-                {result.status === "VALID" &&
-                  "✓ VÁLIDO"}
-
-                {result.status === "INVALID" &&
-                  "✕ INVÁLIDO"}
-
-                {result.status ===
-                  "ALREADY_USED" &&
-                  "↺ JÁ UTILIZADO"}
-
-                {result.status ===
-                  "WRONG_EVENT" &&
-                  "⇄ EVENTO ERRADO"}
-              </strong>
-
-              <p>
-                {result.message}
-              </p>
-
-              {"validatedAt" in result &&
-                result.validatedAt && (
-                  <small>
-                    Validado anteriormente em{" "}
-                    {new Intl.DateTimeFormat(
-                      "pt-BR",
-                      {
-                        day: "2-digit",
-                        month: "2-digit",
-                        year: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      },
-                    ).format(
-                      new Date(
-                        result.validatedAt,
-                      ),
-                    )}
-                  </small>
-                )}
-
-              <button
-                type="button"
-                onClick={resetValidation}
-              >
-                VALIDAR PRÓXIMO →
-              </button>
-            </div>
-          )}
-
-          {error && (
-            <p className="gate-error">
-              {error}
-            </p>
+          ) : (
+            <GateResultView
+              result={result}
+              onReset={resetValidation}
+            />
           )}
         </div>
       </section>

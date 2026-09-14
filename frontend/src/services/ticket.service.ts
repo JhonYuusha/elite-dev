@@ -40,6 +40,21 @@ export type Ticket = {
   };
 };
 
+export type SharedTicket = {
+  id: string;
+  status: TicketStatus;
+  ownerName: string;
+
+  seat: TicketSeat | null;
+
+  event: {
+    title: string;
+    startsAt: string;
+    venueName: string;
+    venueAddress: string | null;
+  };
+};
+
 async function getMyTickets(): Promise<Ticket[]> {
   try {
     const { data } = await api.get<Ticket[]>(
@@ -63,6 +78,33 @@ async function getMyTickets(): Promise<Ticket[]> {
   }
 }
 
+async function getSharedTicket(
+  token: string,
+): Promise<SharedTicket> {
+  try {
+    const { data } =
+      await api.get<SharedTicket>(
+        `/tickets/shared/${token}`,
+      );
+
+    return data;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      throw new Error(
+        error.response?.data?.message ??
+          "Este ingresso não está disponível.",
+        { cause: error },
+      );
+    }
+
+    throw new Error(
+      "Este ingresso não está disponível.",
+      { cause: error },
+    );
+  }
+}
+
 export const ticketService = {
   getMyTickets,
+  getSharedTicket,
 };

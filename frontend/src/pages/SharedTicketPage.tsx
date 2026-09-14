@@ -1,36 +1,29 @@
-import {useEffect, useState, } from "react";
-import {Link, useParams, } from "react-router-dom";
-import axios from "axios";
-import { LoadingState } from "../components/ui/LoadingState";
-import { api } from "../services/api";
-import { waitForMinimumDuration } from "../utils/minimum-delay";
+import {
+  Link,
+  useParams,
+} from "react-router-dom";
 
-type SharedTicket = {
-  id: string;
-  status: "VALID" | "USED" | "CANCELLED";
-  ownerName: string;
+import {
+  LoadingState,
+} from "../components/ui/LoadingState";
 
-  event: {
-    title: string;
-    startsAt: string;
-    venueName: string;
-    venueAddress: string | null;
-  };
-};
+import {
+  useSharedTicket,
+} from "../hooks/tickets/useSharedTicket";
 
-function formatDate(date: string) {
-  return new Intl.DateTimeFormat("pt-BR", {
-    weekday: "long",
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(date));
-}
+import type {
+  TicketSeatType,
+  TicketStatus,
+} from "../services/ticket.service";
 
-function statusLabel(
-  status: SharedTicket["status"],
+import {
+  formatLongDate,
+} from "../utils/date";
+
+import "../styles/shared-ticket-v2.css";
+
+function getStatusLabel(
+  status: TicketStatus,
 ) {
   if (status === "VALID") {
     return "VÁLIDO";
@@ -43,63 +36,42 @@ function statusLabel(
   return "CANCELADO";
 }
 
+function getSeatTypeLabel(
+  type: TicketSeatType | undefined,
+) {
+  if (!type) {
+    return null;
+  }
+
+  if (type === "VIP") {
+    return "VIP";
+  }
+
+  if (type === "ACCESSIBLE") {
+    return "ACESSÍVEL";
+  }
+
+  if (type === "COMPANION") {
+    return "ACOMPANHANTE";
+  }
+
+  return "PADRÃO";
+}
+
 export function SharedTicketPage() {
   const { token } = useParams<{
     token: string;
   }>();
 
-  const [ticket, setTicket] =
-    useState<SharedTicket | null>(null);
+  const {
+    data: ticket,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useSharedTicket(token);
 
-  const [loading, setLoading] =
-    useState(true);
-
-  const [error, setError] =
-    useState("");
-
-  useEffect(() => {
-    async function loadTicket() {
-      const startedAt = performance.now();
-
-      try {
-        setLoading(true);
-        setError("");
-
-        const { data } =
-          await api.get<SharedTicket>(
-            `/tickets/shared/${token}`,
-          );
-
-        setTicket(data);
-      } catch (requestError) {
-        if (
-          axios.isAxiosError(requestError)
-        ) {
-          setError(
-            requestError.response
-              ?.data?.message ??
-              "Este ingresso não está disponível.",
-          );
-        } else {
-          setError(
-            "Este ingresso não está disponível.",
-          );
-        }
-      } finally {
-        await waitForMinimumDuration(
-          startedAt,
-        );
-
-        setLoading(false);
-      }
-    }
-
-    if (token) {
-      void loadTicket();
-    }
-  }, [token]);
-
-  if (loading) {
+  if (isLoading) {
     return (
       <main className="shared-ticket-page">
         <header className="details-header">
@@ -125,7 +97,10 @@ export function SharedTicketPage() {
     );
   }
 
-  if (!ticket) {
+  if (
+    isError ||
+    !ticket
+  ) {
     return (
       <main className="shared-ticket-state">
         <p className="eyebrow">
@@ -138,14 +113,34 @@ export function SharedTicketPage() {
           INDISPONÍVEL.
         </h1>
 
-        <p>{error}</p>
+        <p>
+          {error instanceof Error
+            ? error.message
+            : "Este ingresso não está disponível."}
+        </p>
 
-        <Link to="/">
-          ← VOLTAR À PROGRAMAÇÃO
-        </Link>
+        <div className="shared-ticket-state-actions">
+          <button
+            type="button"
+            onClick={() => {
+              void refetch();
+            }}
+          >
+            TENTAR NOVAMENTE
+          </button>
+
+          <Link to="/">
+            ← VOLTAR À PROGRAMAÇÃO
+          </Link>
+        </div>
       </main>
     );
   }
+
+  const seatTypeLabel =
+    getSeatTypeLabel(
+      ticket.seat?.type,
+    );
 
   return (
     <main className="shared-ticket-page">
@@ -176,11 +171,22 @@ export function SharedTicketPage() {
           </h1>
 
           <p className="shared-ticket-explanation">
-            Este link confirma os dados do
-            ingresso compartilhado. A validação
-            de entrada continua sendo realizada
-            pela portaria da Elite.
+            Este link confirma os dados
+            públicos do ingresso. A entrada
+            continua sendo validada pela
+            portaria da Elite.
           </p>
+
+          <div className="shared-ticket-security">
+            <span>
+              LINK PÚBLICO
+            </span>
+
+            <p>
+              O código de validação não é
+              exposto nesta página.
+            </p>
+          </div>
         </div>
 
         <article
@@ -192,13 +198,15 @@ export function SharedTicketPage() {
             </span>
 
             <strong>
-              {statusLabel(ticket.status)}
+              {getStatusLabel(
+                ticket.status,
+              )}
             </strong>
           </div>
 
           <div className="shared-ticket-event">
             <p>
-              {formatDate(
+              {formatLongDate(
                 ticket.event.startsAt,
               )}
             </p>
@@ -209,11 +217,16 @@ export function SharedTicketPage() {
           </div>
 
           <div className="shared-ticket-data">
-            <div>
-              <span>LOCAL</span>
+            <div className="shared-ticket-field shared-ticket-location">
+              <span>
+                LOCAL
+              </span>
 
               <strong>
-                {ticket.event.venueName}
+                {
+                  ticket.event
+                    .venueName
+                }
               </strong>
 
               {ticket.event
@@ -227,8 +240,27 @@ export function SharedTicketPage() {
               )}
             </div>
 
-            <div>
-              <span>PORTADOR</span>
+            <div className="shared-ticket-field">
+              <span>
+                ASSENTO
+              </span>
+
+              <strong className="shared-ticket-seat">
+                {ticket.seat?.label ??
+                  "—"}
+              </strong>
+
+              {seatTypeLabel && (
+                <p>
+                  {seatTypeLabel}
+                </p>
+              )}
+            </div>
+
+            <div className="shared-ticket-field">
+              <span>
+                PORTADOR
+              </span>
 
               <strong>
                 {ticket.ownerName}
@@ -237,7 +269,9 @@ export function SharedTicketPage() {
           </div>
 
           <div className="shared-ticket-footer">
-            <span>INGRESSO</span>
+            <span>
+              INGRESSO
+            </span>
 
             <code>
               {ticket.id
