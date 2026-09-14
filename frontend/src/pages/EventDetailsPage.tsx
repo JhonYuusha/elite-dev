@@ -1,62 +1,140 @@
-import { useState } from "react";
-import { motion } from "motion/react";
+import {
+  useState,
+} from "react";
+
+import {
+  motion,
+} from "motion/react";
+
 import {
   Link,
   useNavigate,
   useParams,
 } from "react-router-dom";
 
-import { LoadingState } from "../components/ui/LoadingState";
-import { useAuth } from "../context/useAuth";
-import { useEventDetails } from "../hooks/events/useEventDetails";
-import { useReservation } from "../hooks/reservations/useReservation";
-import { editorialEase } from "../lib/motion";
-import { formatLongDate } from "../utils/date";
-import { formatMoney } from "../utils/money";
+import {
+  SeatMap,
+} from "../components/events/SeatMap";
+
+import {
+  LoadingState,
+} from "../components/ui/LoadingState";
+
+import {
+  useAuth,
+} from "../context/useAuth";
+
+import {
+  useEventDetails,
+} from "../hooks/events/useEventDetails";
+
+import {
+  useReservation,
+} from "../hooks/reservations/useReservation";
+
+import {
+  editorialEase,
+} from "../lib/motion";
+
+import type {
+  EventSeat,
+} from "../types/event";
+
+import {
+  formatLongDate,
+} from "../utils/date";
+
+import {
+  formatMoney,
+} from "../utils/money";
 
 import "../styles/event-details-v2.css";
+import "../styles/seat-map.css";
 
-const MAX_TICKETS_PER_RESERVATION = 6;
+const MAX_SEATS_PER_RESERVATION = 6;
 
 export function EventDetailsPage() {
   const { id } = useParams<{
     id: string;
   }>();
 
-  const navigate = useNavigate();
-  const { user } = useAuth();
+  const navigate =
+    useNavigate();
 
-  const [quantity, setQuantity] =
-    useState(1);
+  const { user } =
+    useAuth();
 
-  const eventQuery = useEventDetails(id);
-  const reservation = useReservation();
+  const [
+    selectedSeatIds,
+    setSelectedSeatIds,
+  ] = useState<string[]>([]);
 
-  const event = eventQuery.data;
+  const eventQuery =
+    useEventDetails(id);
 
-  function decreaseQuantity() {
-    setQuantity((current) =>
-      Math.max(1, current - 1),
+  const reservation =
+    useReservation();
+
+  const event =
+    eventQuery.data;
+
+  const seats =
+    event?.seats ?? [];
+
+  const selectedSeats =
+    seats.filter(
+      (seat) =>
+        selectedSeatIds.includes(
+          seat.id,
+        ),
     );
-  }
 
-  function increaseQuantity() {
-    if (!event) {
+  function toggleSeat(
+    seat: EventSeat,
+  ) {
+    if (
+      seat.status !==
+        "AVAILABLE" ||
+      reservation.isPending
+    ) {
       return;
     }
 
-    const limit = Math.min(
-      event.availableTickets,
-      MAX_TICKETS_PER_RESERVATION,
-    );
+    setSelectedSeatIds(
+      (current) => {
+        if (
+          current.includes(
+            seat.id,
+          )
+        ) {
+          return current.filter(
+            (seatId) =>
+              seatId !==
+              seat.id,
+          );
+        }
 
-    setQuantity((current) =>
-      Math.min(limit, current + 1),
+        if (
+          current.length >=
+          MAX_SEATS_PER_RESERVATION
+        ) {
+          return current;
+        }
+
+        return [
+          ...current,
+          seat.id,
+        ];
+      },
     );
   }
 
   async function handleReservation() {
-    if (!event) {
+    if (
+      !event ||
+      selectedSeatIds.length ===
+        0
+    ) {
       return;
     }
 
@@ -65,26 +143,54 @@ export function EventDetailsPage() {
       return;
     }
 
-    if (user.role !== "CLIENT") {
+    if (
+      user.role !==
+      "CLIENT"
+    ) {
       return;
     }
 
     try {
       const createdReservation =
         await reservation.mutateAsync({
-          eventId: event.id,
-          quantity,
+          eventId:
+            event.id,
+
+          seatIds:
+            selectedSeatIds,
         });
 
       navigate(
         `/checkout/${createdReservation.id}`,
       );
     } catch {
-      // O erro é exposto pelo estado da mutation.
+      const refreshed =
+        await eventQuery.refetch();
+
+      if (
+        refreshed.data?.seats
+      ) {
+        setSelectedSeatIds(
+          (current) =>
+            current.filter(
+              (seatId) =>
+                refreshed.data?.seats?.some(
+                  (seat) =>
+                    seat.id ===
+                      seatId &&
+                    seat.status ===
+                      "AVAILABLE",
+                ) ??
+                false,
+            ),
+        );
+      }
     }
   }
 
-  if (eventQuery.isPending) {
+  if (
+    eventQuery.isPending
+  ) {
     return (
       <main className="event-details-v2-page">
         <DetailsHeader />
@@ -96,13 +202,18 @@ export function EventDetailsPage() {
     );
   }
 
-  if (eventQuery.isError || !event) {
+  if (
+    eventQuery.isError ||
+    !event
+  ) {
     return (
       <main className="event-details-v2-page">
         <DetailsHeader />
 
         <section className="event-details-v2-state">
-          <p>PROGRAMAÇÃO / ERRO</p>
+          <p>
+            PROGRAMAÇÃO / ERRO
+          </p>
 
           <h1>
             SESSÃO
@@ -111,13 +222,16 @@ export function EventDetailsPage() {
           </h1>
 
           <span>
-            {eventQuery.error instanceof Error
-              ? eventQuery.error.message
+            {eventQuery.error instanceof
+            Error
+              ? eventQuery.error
+                  .message
               : "Não foi possível carregar esta sessão."}
           </span>
 
           <Link to="/">
-            ← VOLTAR PARA PROGRAMAÇÃO
+            ← VOLTAR PARA
+            PROGRAMAÇÃO
           </Link>
         </section>
       </main>
@@ -128,12 +242,23 @@ export function EventDetailsPage() {
     event.availableTickets <= 0;
 
   const totalCents =
-    event.priceCents * quantity;
+    event.priceCents *
+    selectedSeats.length;
 
   const reservationError =
-    reservation.error instanceof Error
-      ? reservation.error.message
+    reservation.error instanceof
+    Error
+      ? reservation.error
+          .message
       : "";
+
+  const selectedLabels =
+    selectedSeats
+      .map(
+        (seat) =>
+          seat.label,
+      )
+      .join(" · ");
 
   return (
     <main className="event-details-v2-page">
@@ -148,6 +273,7 @@ export function EventDetailsPage() {
         animate={{
           opacity: 1,
           y: 0,
+
           transition: {
             duration: 0.65,
             ease: editorialEase,
@@ -156,33 +282,52 @@ export function EventDetailsPage() {
       >
         <aside className="event-details-v2-visual">
           <div className="event-details-v2-index">
-            <span>EXIBIÇÃO</span>
+            <span>
+              EXIBIÇÃO
+            </span>
+
             <strong>
-              / {event.id.slice(0, 4)}
+              /{" "}
+              {event.id.slice(
+                0,
+                4,
+              )}
             </strong>
           </div>
 
           <div className="event-details-v2-poster">
             {event.imageUrl ? (
               <img
-                src={event.imageUrl}
+                src={
+                  event.imageUrl
+                }
                 alt={`Pôster de ${event.title}`}
               />
             ) : (
               <div className="event-details-v2-poster-empty">
-                <span>ELITE / TICKETS</span>
-                <strong>SEM PÔSTER</strong>
+                <span>
+                  ELITE / TICKETS
+                </span>
+
+                <strong>
+                  SEM PÔSTER
+                </strong>
               </div>
             )}
           </div>
 
           <div className="event-details-v2-poster-meta">
-            <span>SESSÃO PROGRAMADA</span>
+            <span>
+              SESSÃO PROGRAMADA
+            </span>
 
             <span>
               {String(
                 event.availableTickets,
-              ).padStart(2, "0")}{" "}
+              ).padStart(
+                2,
+                "0",
+              )}{" "}
               LUGARES
             </span>
           </div>
@@ -197,13 +342,17 @@ export function EventDetailsPage() {
             </p>
 
             <div className="event-details-v2-title-mask">
-              <h1>{event.title}</h1>
+              <h1>
+                {event.title}
+              </h1>
             </div>
           </div>
 
           <div className="event-details-v2-information">
             <div className="event-details-v2-description">
-              <span>SOBRE / SESSÃO</span>
+              <span>
+                SOBRE / SESSÃO
+              </span>
 
               <p>
                 {event.description ||
@@ -213,15 +362,22 @@ export function EventDetailsPage() {
 
             <div className="event-details-v2-location">
               <div>
-                <span>LOCAL</span>
+                <span>
+                  LOCAL
+                </span>
+
                 <strong>
-                  {event.venueName}
+                  {
+                    event.venueName
+                  }
                 </strong>
               </div>
 
               {event.venueAddress && (
                 <p>
-                  {event.venueAddress}
+                  {
+                    event.venueAddress
+                  }
                 </p>
               )}
             </div>
@@ -230,7 +386,10 @@ export function EventDetailsPage() {
           <section className="event-details-v2-purchase">
             <div className="event-details-v2-purchase-heading">
               <div>
-                <span>INGRESSOS / SESSÃO</span>
+                <span>
+                  INGRESSOS /
+                  SESSÃO
+                </span>
 
                 <strong>
                   {formatMoney(
@@ -248,7 +407,9 @@ export function EventDetailsPage() {
 
             {soldOut ? (
               <div className="event-details-v2-sold-out">
-                <span>ESGOTADO / 00</span>
+                <span>
+                  ESGOTADO / 00
+                </span>
 
                 <strong>
                   NÃO HÁ MAIS
@@ -257,60 +418,73 @@ export function EventDetailsPage() {
                 </strong>
 
                 <p>
-                  Todos os ingressos desta
-                  sessão já foram reservados.
+                  Todos os
+                  ingressos desta
+                  sessão já foram
+                  reservados.
                 </p>
               </div>
             ) : (
               <>
-                <div className="event-details-v2-reservation">
-                  <div className="event-details-v2-quantity">
-                    <span>QUANTIDADE</span>
+                <SeatMap
+                  seats={seats}
+                  selectedSeatIds={
+                    selectedSeatIds
+                  }
+                  maxSelection={
+                    MAX_SEATS_PER_RESERVATION
+                  }
+                  disabled={
+                    reservation.isPending
+                  }
+                  onToggle={
+                    toggleSeat
+                  }
+                />
 
-                    <div>
-                      <button
-                        type="button"
-                        aria-label="Diminuir quantidade"
-                        disabled={
-                          quantity <= 1
-                        }
-                        onClick={
-                          decreaseQuantity
-                        }
-                      >
-                        −
-                      </button>
+                <div className="event-details-v2-seat-summary">
+                  <div className="event-details-v2-seat-selection">
+                    <span>
+                      SEUS LUGARES
+                    </span>
 
-                      <strong>
-                        {String(
-                          quantity,
-                        ).padStart(
-                          2,
-                          "0",
-                        )}
-                      </strong>
+                    {selectedSeats.length >
+                    0 ? (
+                      <>
+                        <strong>
+                          {
+                            selectedLabels
+                          }
+                        </strong>
 
-                      <button
-                        type="button"
-                        aria-label="Aumentar quantidade"
-                        disabled={
-                          quantity >=
-                          Math.min(
-                            event.availableTickets,
-                            MAX_TICKETS_PER_RESERVATION,
-                          )
-                        }
-                        onClick={
-                          increaseQuantity
-                        }
-                      >
-                        +
-                      </button>
-                    </div>
+                        <p>
+                          {selectedSeats.length}{" "}
+                          {selectedSeats.length ===
+                          1
+                            ? "INGRESSO"
+                            : "INGRESSOS"}
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <strong className="event-details-v2-seat-empty">
+                          NENHUM
+                          SELECIONADO
+                        </strong>
+
+                        <p>
+                          Escolha os
+                          lugares no
+                          mapa acima.
+                        </p>
+                      </>
+                    )}
                   </div>
 
-                  <div className="event-details-v2-total">
-                    <span>TOTAL</span>
+                  <div className="event-details-v2-seat-price">
+                    <span>
+                      TOTAL
+                    </span>
 
                     <strong>
                       {formatMoney(
@@ -322,7 +496,9 @@ export function EventDetailsPage() {
 
                 {reservationError && (
                   <p className="event-details-v2-error">
-                    {reservationError}
+                    {
+                      reservationError
+                    }
                   </p>
                 )}
 
@@ -335,8 +511,9 @@ export function EventDetailsPage() {
                       </span>
 
                       <p>
-                        Entre como cliente
-                        para continuar com a
+                        Entre como
+                        cliente para
+                        continuar com a
                         reserva.
                       </p>
                     </div>
@@ -344,11 +521,18 @@ export function EventDetailsPage() {
                     <button
                       type="button"
                       onClick={() =>
-                        navigate("/login")
+                        navigate(
+                          "/login",
+                        )
                       }
                     >
-                      <span>FAZER LOGIN</span>
-                      <span>↗</span>
+                      <span>
+                        FAZER LOGIN
+                      </span>
+
+                      <span>
+                        ↗
+                      </span>
                     </button>
                   </div>
                 )}
@@ -360,14 +544,17 @@ export function EventDetailsPage() {
                       <div>
                         <span>
                           CONTA /{" "}
-                          {user.role}
+                          {
+                            user.role
+                          }
                         </span>
 
                         <p>
                           A compra de
                           ingressos é
-                          exclusiva para
-                          contas de cliente.
+                          exclusiva
+                          para contas
+                          de cliente.
                         </p>
                       </div>
 
@@ -383,7 +570,9 @@ export function EventDetailsPage() {
                           TROCAR CONTA
                         </span>
 
-                        <span>↗</span>
+                        <span>
+                          ↗
+                        </span>
                       </button>
                     </div>
                   )}
@@ -394,7 +583,9 @@ export function EventDetailsPage() {
                     type="button"
                     className="event-details-v2-reserve"
                     disabled={
-                      reservation.isPending
+                      reservation.isPending ||
+                      selectedSeats.length ===
+                        0
                     }
                     onClick={
                       handleReservation
@@ -403,10 +594,15 @@ export function EventDetailsPage() {
                     <span>
                       {reservation.isPending
                         ? "RESERVANDO..."
-                        : "RESERVAR INGRESSOS"}
+                        : selectedSeats.length ===
+                            0
+                          ? "SELECIONE SEUS LUGARES"
+                          : "CONTINUAR PARA PAGAMENTO"}
                     </span>
 
-                    <span>↗</span>
+                    <span>
+                      ↗
+                    </span>
                   </button>
                 )}
               </>
@@ -426,12 +622,15 @@ function DetailsHeader() {
         className="brand"
       >
         ELITE
-        <span>/TICKETS</span>
+        <span>
+          /TICKETS
+        </span>
       </Link>
 
       <div className="event-details-v2-header-meta">
         <span>
-          PROGRAMAÇÃO / DETALHES
+          PROGRAMAÇÃO /
+          DETALHES
         </span>
 
         <Link to="/">

@@ -8,6 +8,7 @@ import { paymentRouter } from "./routes/payment.routes.js";
 import { ticketRouter } from "./routes/ticket.routes.js";
 import { gateRouter } from "./routes/gate.routes.js";
 import { catalogRouter } from "./routes/catalog.routes.js";
+import { productRouter } from "./routes/product.routes.js";
 
 import { errorHandler } from "./middlewares/error-handler.js";
 
@@ -29,5 +30,6 @@ app.use("/payments", paymentRouter);
 app.use("/tickets", ticketRouter);
 app.use("/gate", gateRouter);
 app.use("/catalog", catalogRouter);
+app.use("/products", productRouter);
 
 app.use(errorHandler);

@@ -1,14 +1,28 @@
-import type { Request, Response } from "express";
+import type {
+  Request,
+  Response,
+} from "express";
 
-import { createReservationSchema } from "../schemas/reservation.schema.js";
-import { reservationService } from "../services/reservation.service.js";
+import {
+  updateReservationItemsSchema,
+} from "../schemas/reservation-items.schema.js";
+
+import {
+  createReservationSchema,
+} from "../schemas/reservation.schema.js";
+
+import {
+  reservationService,
+} from "../services/reservation.service.js";
 
 export async function createReservation(
   req: Request,
   res: Response,
 ) {
   const input =
-    createReservationSchema.parse(req.body);
+    createReservationSchema.parse(
+      req.body,
+    );
 
   const reservation =
     await reservationService.createReservation(
@@ -22,7 +36,9 @@ export async function createReservation(
 }
 
 export async function getReservationById(
-  req: Request<{ id: string }>,
+  req: Request<{
+    id: string;
+  }>,
   res: Response,
 ) {
   const reservation =
@@ -31,5 +47,30 @@ export async function getReservationById(
       req.params.id,
     );
 
-  return res.json(reservation);
+  return res.json(
+    reservation,
+  );
+}
+
+export async function updateReservationItems(
+  req: Request<{
+    id: string;
+  }>,
+  res: Response,
+) {
+  const input =
+    updateReservationItemsSchema.parse(
+      req.body,
+    );
+
+  const reservation =
+    await reservationService.updateReservationItems(
+      req.user!.id,
+      req.params.id,
+      input,
+    );
+
+  return res.json(
+    reservation,
+  );
 }

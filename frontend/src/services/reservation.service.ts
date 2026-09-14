@@ -2,20 +2,66 @@ import axios from "axios";
 
 import { api } from "./api";
 
+import type {
+  EventSeat,
+} from "../types/event";
+
+export type ReservationStatus =
+  | "PENDING"
+  | "PAID"
+  | "PAYMENT_FAILED"
+  | "CANCELLED";
+
+export type ReservationProductCategory =
+  | "POPCORN"
+  | "DRINK"
+  | "COMBO";
+
+export type ReservationItem = {
+  id: string;
+  productId: string;
+  quantity: number;
+  unitPriceCents: number;
+  totalCents: number;
+
+  product: {
+    id: string;
+    slug: string;
+    name: string;
+    description: string | null;
+    imageUrl: string | null;
+    category:
+      ReservationProductCategory;
+  };
+};
+
 export type CreateReservationInput = {
   eventId: string;
+  seatIds: string[];
+};
+
+export type UpdateReservationItemInput = {
+  productId: string;
   quantity: number;
+};
+
+export type UpdateReservationItemsInput = {
+  reservationId: string;
+
+  items:
+    UpdateReservationItemInput[];
 };
 
 export type Reservation = {
   id: string;
   quantity: number;
+
+  ticketUnitPriceCents: number;
+  ticketsSubtotalCents: number;
+  productsSubtotalCents: number;
   totalCents: number;
-  status:
-    | "PENDING"
-    | "PAID"
-    | "PAYMENT_FAILED"
-    | "CANCELLED";
+
+  status: ReservationStatus;
 
   event: {
     id: string;
@@ -26,22 +72,21 @@ export type Reservation = {
     venueAddress: string | null;
     priceCents: number;
   };
-};
 
-export type ReservationResponse = {
-  id: string;
-  quantity: number;
-  totalCents: number;
-  status: string;
+  seats: EventSeat[];
+  items: ReservationItem[];
 };
 
 function getReservationErrorMessage(
   error: unknown,
   fallbackMessage: string,
 ) {
-  if (axios.isAxiosError(error)) {
+  if (
+    axios.isAxiosError(error)
+  ) {
     return (
-      error.response?.data?.message ??
+      error.response?.data
+        ?.message ??
       fallbackMessage
     );
   }
@@ -74,10 +119,10 @@ async function getReservationById(
 
 async function createReservation(
   input: CreateReservationInput,
-): Promise<ReservationResponse> {
+): Promise<Reservation> {
   try {
     const { data } =
-      await api.post<ReservationResponse>(
+      await api.post<Reservation>(
         "/reservations",
         input,
       );
@@ -96,7 +141,36 @@ async function createReservation(
   }
 }
 
+async function updateReservationItems(
+  input:
+    UpdateReservationItemsInput,
+): Promise<Reservation> {
+  try {
+    const { data } =
+      await api.put<Reservation>(
+        `/reservations/${input.reservationId}/items`,
+        {
+          items:
+            input.items,
+        },
+      );
+
+    return data;
+  } catch (error) {
+    throw new Error(
+      getReservationErrorMessage(
+        error,
+        "Não foi possível atualizar a bomboniere.",
+      ),
+      {
+        cause: error,
+      },
+    );
+  }
+}
+
 export const reservationService = {
   getReservationById,
   createReservation,
+  updateReservationItems,
 };

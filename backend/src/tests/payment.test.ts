@@ -20,24 +20,32 @@ describe("Payment", () => {
     "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
 
   let clientToken: string;
+
   let eventId: string;
   let reservationId: string;
+
+  let seatIds: string[];
 
   beforeAll(async () => {
     process.env.JWT_SECRET =
       process.env.JWT_SECRET ||
       "test-secret";
 
-    clientToken = jwt.sign(
-      {
-        role: "CLIENT",
-      },
-      process.env.JWT_SECRET,
-      {
-        subject: clientId,
-        expiresIn: "1h",
-      },
-    );
+    clientToken =
+      jwt.sign(
+        {
+          role:
+            "CLIENT",
+        },
+        process.env.JWT_SECRET,
+        {
+          subject:
+            clientId,
+
+          expiresIn:
+            "1h",
+        },
+      );
 
     await prisma.user.upsert({
       where: {
@@ -48,11 +56,18 @@ describe("Payment", () => {
 
       create: {
         id: organizerId,
-        name: "Organizador Teste",
+
+        name:
+          "Organizador Teste",
+
         email:
           "organizer-payment-test@elite.dev",
-        passwordHash: "not-used",
-        role: "ORGANIZER",
+
+        passwordHash:
+          "not-used",
+
+        role:
+          "ORGANIZER",
       },
     });
 
@@ -65,11 +80,18 @@ describe("Payment", () => {
 
       create: {
         id: clientId,
-        name: "Cliente Teste",
+
+        name:
+          "Cliente Teste",
+
         email:
           "client-payment-test@elite.dev",
-        passwordHash: "not-used",
-        role: "CLIENT",
+
+        passwordHash:
+          "not-used",
+
+        role:
+          "CLIENT",
       },
     });
 
@@ -78,7 +100,9 @@ describe("Payment", () => {
         data: {
           organizerId,
 
-          externalProvider: "TEST",
+          externalProvider:
+            "TEST",
+
           externalId:
             "payment-declined-test",
 
@@ -91,7 +115,10 @@ describe("Payment", () => {
           startsAt:
             new Date(
               Date.now() +
-                24 * 60 * 60 * 1000,
+                24 *
+                  60 *
+                  60 *
+                  1000,
             ),
 
           venueName:
@@ -101,44 +128,95 @@ describe("Payment", () => {
             "Rua Teste, 123",
 
           capacity: 10,
-          availableTickets: 10,
-          priceCents: 2500,
 
-          status: "PUBLISHED",
+          availableTickets:
+            10,
+
+          priceCents:
+            2500,
+
+          status:
+            "PUBLISHED",
         },
       });
 
-    eventId = event.id;
+    eventId =
+      event.id;
 
-    const reservation =
-      await prisma.reservation.create({
-        data: {
-          clientId,
+    const seats =
+      await Promise.all(
+        Array.from(
+          {
+            length: 10,
+          },
+          (_, index) =>
+            prisma.seat.create({
+              data: {
+                eventId,
+
+                row:
+                  index < 8
+                    ? "A"
+                    : "B",
+
+                number:
+                  index < 8
+                    ? index + 1
+                    : index - 7,
+
+                label:
+                  index < 8
+                    ? `A${String(
+                        index + 1,
+                      ).padStart(
+                        2,
+                        "0",
+                      )}`
+                    : `B${String(
+                        index - 7,
+                      ).padStart(
+                        2,
+                        "0",
+                      )}`,
+
+                type:
+                  "STANDARD",
+
+                status:
+                  "AVAILABLE",
+              },
+            }),
+        ),
+      );
+
+    seatIds =
+      seats
+        .slice(0, 3)
+        .map(
+          (seat) =>
+            seat.id,
+        );
+
+    const reservationResponse =
+      await request(app)
+        .post(
+          "/reservations",
+        )
+        .set(
+          "Authorization",
+          `Bearer ${clientToken}`,
+        )
+        .send({
           eventId,
+          seatIds,
+        });
 
-          quantity: 3,
-
-          totalCents:
-            3 * 2500,
-
-          status: "PENDING",
-        },
-      });
+    expect(
+      reservationResponse.status,
+    ).toBe(201);
 
     reservationId =
-      reservation.id;
-
-    await prisma.event.update({
-      where: {
-        id: eventId,
-      },
-
-      data: {
-        availableTickets: {
-          decrement: 3,
-        },
-      },
-    });
+      reservationResponse.body.id;
   });
 
   afterAll(async () => {
@@ -174,50 +252,100 @@ describe("Payment", () => {
     await prisma.$disconnect();
   });
 
-  it("deve devolver os ingressos ao estoque quando o pagamento for recusado", async () => {
-    const beforePayment =
-      await prisma.event.findUnique({
-        where: {
-          id: eventId,
-        },
-      });
-
-    expect(
-      beforePayment?.availableTickets,
-    ).toBe(7);
-
-    const response =
-      await request(app)
-        .post(
-          `/payments/reservations/${reservationId}/pay`,
-        )
-        .set(
-          "Authorization",
-          `Bearer ${clientToken}`,
-        )
-        .send({
-          result: "DECLINED",
+  it(
+    "deve devolver os assentos ao estoque quando o pagamento for recusado",
+    async () => {
+      const beforePayment =
+        await prisma.event.findUnique({
+          where: {
+            id: eventId,
+          },
         });
 
-    expect(response.status).toBe(200);
+      expect(
+        beforePayment
+          ?.availableTickets,
+      ).toBe(7);
 
-    expect(
-      response.body.paymentStatus,
-    ).toBe("DECLINED");
+      const beforeSeats =
+        await prisma.seat.findMany({
+          where: {
+            id: {
+              in: seatIds,
+            },
+          },
+        });
 
-    expect(
-      response.body.reservation.status,
-    ).toBe("PAYMENT_FAILED");
+      expect(
+        beforeSeats.every(
+          (seat) =>
+            seat.status ===
+            "RESERVED",
+        ),
+      ).toBe(true);
 
-    const afterPayment =
-      await prisma.event.findUnique({
-        where: {
-          id: eventId,
-        },
-      });
+      const response =
+        await request(app)
+          .post(
+            `/payments/reservations/${reservationId}/pay`,
+          )
+          .set(
+            "Authorization",
+            `Bearer ${clientToken}`,
+          )
+          .send({
+            result:
+              "DECLINED",
+          });
 
-    expect(
-      afterPayment?.availableTickets,
-    ).toBe(10);
-  });
+      expect(
+        response.status,
+      ).toBe(200);
+
+      expect(
+        response.body
+          .paymentStatus,
+      ).toBe(
+        "DECLINED",
+      );
+
+      expect(
+        response.body
+          .reservation.status,
+      ).toBe(
+        "PAYMENT_FAILED",
+      );
+
+      const afterPayment =
+        await prisma.event.findUnique({
+          where: {
+            id: eventId,
+          },
+        });
+
+      expect(
+        afterPayment
+          ?.availableTickets,
+      ).toBe(10);
+
+      const afterSeats =
+        await prisma.seat.findMany({
+          where: {
+            id: {
+              in: seatIds,
+            },
+          },
+        });
+
+      expect(
+        afterSeats.every(
+          (seat) =>
+            seat.status ===
+            "AVAILABLE" &&
+            seat.reservationId ===
+              null,
+        ),
+      ).toBe(true);
+    },
+  );
 });

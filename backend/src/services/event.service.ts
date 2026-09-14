@@ -8,13 +8,13 @@ import type {
   UpdateEventInput,
 } from "../schemas/event.schema.js";
 
+import { generateSeatLayout } from "../utils/seat-layout.js";
 import { getTmdbMovie } from "./tmdb.service.js";
 
 async function listPublishedEvents() {
   return prisma.event.findMany({
     where: {
       status: "PUBLISHED",
-
       startsAt: {
         gte: new Date(),
       },
@@ -59,6 +59,26 @@ async function getPublishedEventById(
         capacity: true,
         availableTickets: true,
         priceCents: true,
+
+        seats: {
+          select: {
+            id: true,
+            row: true,
+            number: true,
+            label: true,
+            type: true,
+            status: true,
+          },
+
+          orderBy: [
+            {
+              row: "asc",
+            },
+            {
+              number: "asc",
+            },
+          ],
+        },
       },
     });
 
@@ -208,42 +228,67 @@ async function createEvent(
     );
   }
 
-  return prisma.event.create({
-    data: {
-      organizerId,
+  return prisma.$transaction(
+    async (tx) => {
+      const event =
+        await tx.event.create({
+          data: {
+            organizerId,
 
-      externalProvider: "TMDB",
-      externalId:
-        movie.externalId,
+            externalProvider: "TMDB",
+            externalId:
+              movie.externalId,
 
-      title: movie.title,
-      description:
-        movie.description,
-      imageUrl:
-        movie.imageUrl,
+            title: movie.title,
+            description:
+              movie.description,
+            imageUrl:
+              movie.imageUrl,
 
-      startsAt:
-        parsedStartsAt,
+            startsAt:
+              parsedStartsAt,
 
-      venueName:
-        cleanVenueName,
+            venueName:
+              cleanVenueName,
 
-      venueAddress:
-        cleanVenueAddress,
+            venueAddress:
+              cleanVenueAddress,
 
-      capacity:
-        input.capacity,
+            capacity:
+              input.capacity,
 
-      availableTickets:
-        input.capacity,
+            availableTickets:
+              input.capacity,
 
-      priceCents:
-        input.priceCents,
+            priceCents:
+              input.priceCents,
 
-      status:
-        "PUBLISHED",
+            status:
+              "PUBLISHED",
+          },
+        });
+
+      const seats =
+        generateSeatLayout(
+          input.capacity,
+        );
+
+      await tx.seat.createMany({
+        data: seats.map(
+          (seat) => ({
+            eventId: event.id,
+            row: seat.row,
+            number: seat.number,
+            label: seat.label,
+            type: "STANDARD",
+            status: "AVAILABLE",
+          }),
+        ),
+      });
+
+      return event;
     },
-  });
+  );
 }
 
 async function updateEvent(
@@ -251,62 +296,91 @@ async function updateEvent(
   eventId: string,
   input: UpdateEventInput,
 ) {
-  const event =
-    await prisma.event.findFirst({
-      where: {
-        id: eventId,
-        organizerId,
-      },
-    });
+  return prisma.$transaction(
+    async (tx) => {
+      const event =
+        await tx.event.findFirst({
+          where: {
+            id: eventId,
+            organizerId,
+          },
+        });
 
-  if (!event) {
-    throw new AppError(
-      "Evento não encontrado.",
-      404,
-      "EVENT_NOT_FOUND",
-    );
-  }
+      if (!event) {
+        throw new AppError(
+          "Evento não encontrado.",
+          404,
+          "EVENT_NOT_FOUND",
+        );
+      }
 
-  if (
-    event.status !== "PUBLISHED"
-  ) {
-    throw new AppError(
-      "Apenas sessões publicadas podem ser alteradas.",
-      409,
-      "EVENT_NOT_PUBLISHED",
-    );
-  }
+      if (
+        event.status !==
+        "PUBLISHED"
+      ) {
+        throw new AppError(
+          "Apenas sessões publicadas podem ser alteradas.",
+          409,
+          "EVENT_NOT_PUBLISHED",
+        );
+      }
 
-  return prisma.event.update({
-    where: {
-      id: event.id,
-    },
-
-    data: {
-      ...(
-        input.priceCents !==
-          undefined && {
-          priceCents:
-            input.priceCents,
-        }
-      ),
-
-      ...(
+      if (
         input.addCapacity !==
-          undefined && {
-          capacity: {
-            increment:
-              input.addCapacity,
-          },
+        undefined
+      ) {
+        const newSeats =
+          generateSeatLayout(
+            input.addCapacity,
+            event.capacity,
+          );
 
-          availableTickets: {
-            increment:
-              input.addCapacity,
-          },
-        }
-      ),
+        await tx.seat.createMany({
+          data: newSeats.map(
+            (seat) => ({
+              eventId: event.id,
+              row: seat.row,
+              number: seat.number,
+              label: seat.label,
+              type: "STANDARD",
+              status: "AVAILABLE",
+            }),
+          ),
+        });
+      }
+
+      return tx.event.update({
+        where: {
+          id: event.id,
+        },
+
+        data: {
+          ...(
+            input.priceCents !==
+              undefined && {
+              priceCents:
+                input.priceCents,
+            }
+          ),
+
+          ...(
+            input.addCapacity !==
+              undefined && {
+              capacity: {
+                increment:
+                  input.addCapacity,
+              },
+
+              availableTickets: {
+                increment:
+                  input.addCapacity,
+              },
+            }
+          ),
+        },
+      });
     },
-  });
+  );
 }
 
 export const eventService = {

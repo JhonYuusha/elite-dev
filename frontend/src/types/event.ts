@@ -1,3 +1,23 @@
+export type SeatStatus =
+  | "AVAILABLE"
+  | "RESERVED"
+  | "SOLD";
+
+export type SeatType =
+  | "STANDARD"
+  | "VIP"
+  | "ACCESSIBLE"
+  | "COMPANION";
+
+export type EventSeat = {
+  id: string;
+  row: string;
+  number: number;
+  label: string;
+  type: SeatType;
+  status: SeatStatus;
+};
+
 export type Event = {
   id: string;
 
@@ -14,6 +34,8 @@ export type Event = {
   availableTickets: number;
 
   priceCents: number;
+
+  seats?: EventSeat[];
 };
 
 export type OrganizerEvent = {

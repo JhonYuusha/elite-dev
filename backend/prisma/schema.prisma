@@ -32,6 +32,25 @@ enum TicketStatus {
   CANCELLED
 }
 
+enum SeatStatus {
+  AVAILABLE
+  RESERVED
+  SOLD
+}
+
+enum SeatType {
+  STANDARD
+  VIP
+  ACCESSIBLE
+  COMPANION
+}
+
+enum ProductCategory {
+  POPCORN
+  DRINK
+  COMBO
+}
+
 model User {
   id           String   @id @default(uuid())
   name         String
@@ -75,6 +94,7 @@ model Event {
 
   reservations Reservation[]
   tickets      Ticket[]
+  seats        Seat[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -93,12 +113,18 @@ model Reservation {
   eventId String
   event   Event  @relation(fields: [eventId], references: [id])
 
-  quantity   Int
-  totalCents Int
+  quantity Int
+
+  ticketUnitPriceCents Int @default(0)
+  ticketsSubtotalCents Int @default(0)
+  productsSubtotalCents Int @default(0)
+  totalCents            Int
 
   status ReservationStatus @default(PENDING)
 
   tickets Ticket[]
+  seats   Seat[]
+  items   ReservationItem[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -119,6 +145,9 @@ model Ticket {
   ownerId String
   owner   User   @relation("TicketOwner", fields: [ownerId], references: [id])
 
+  seatId String? @unique
+  seat   Seat?   @relation(fields: [seatId], references: [id])
+
   status TicketStatus @default(VALID)
 
   shareToken String? @unique
@@ -132,4 +161,78 @@ model Ticket {
 
   @@index([eventId])
   @@index([ownerId])
+}
+
+model Seat {
+  id String @id @default(uuid())
+
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  row    String
+  number Int
+  label  String
+
+  type   SeatType   @default(STANDARD)
+  status SeatStatus @default(AVAILABLE)
+
+  reservationId String?
+  reservation   Reservation? @relation(fields: [reservationId], references: [id], onDelete: SetNull)
+
+  ticket Ticket?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([eventId, label])
+  @@index([eventId, status])
+  @@index([reservationId])
+}
+
+model Product {
+  id String @id @default(uuid())
+
+  slug String @unique
+  name String
+
+  description String?
+  imageUrl    String?
+
+  category ProductCategory
+
+  priceCents Int
+
+  active    Boolean @default(true)
+  sortOrder Int     @default(0)
+
+  reservationItems ReservationItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([active])
+  @@index([category])
+  @@index([sortOrder])
+}
+
+model ReservationItem {
+  id String @id @default(uuid())
+
+  reservationId String
+  reservation   Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+
+  quantity Int
+
+  unitPriceCents Int
+  totalCents     Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([reservationId, productId])
+  @@index([reservationId])
+  @@index([productId])
 }

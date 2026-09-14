@@ -12,256 +12,347 @@ import {
 import { app } from "../app.js";
 import { prisma } from "../lib/prisma.js";
 
-describe("Reservation concurrency", () => {
-  const organizerId =
-    "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+describe(
+  "Reservation seat concurrency",
+  () => {
+    const organizerId =
+      "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
 
-  const clientOneId =
-    "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
+    const clientOneId =
+      "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
 
-  const clientTwoId =
-    "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee";
+    const clientTwoId =
+      "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee";
 
-  let eventId: string;
+    let eventId: string;
+    let seatId: string;
 
-  let clientOneToken: string;
-  let clientTwoToken: string;
+    let clientOneToken: string;
+    let clientTwoToken: string;
 
-  beforeAll(async () => {
-    process.env.JWT_SECRET =
-      process.env.JWT_SECRET ||
-      "test-secret";
+    beforeAll(async () => {
+      process.env.JWT_SECRET =
+        process.env.JWT_SECRET ||
+        "test-secret";
 
-    clientOneToken = jwt.sign(
-      {
-        role: "CLIENT",
-      },
-      process.env.JWT_SECRET,
-      {
-        subject: clientOneId,
-        expiresIn: "1h",
-      },
-    );
+      clientOneToken =
+        jwt.sign(
+          {
+            role: "CLIENT",
+          },
+          process.env.JWT_SECRET,
+          {
+            subject:
+              clientOneId,
 
-    clientTwoToken = jwt.sign(
-      {
-        role: "CLIENT",
-      },
-      process.env.JWT_SECRET,
-      {
-        subject: clientTwoId,
-        expiresIn: "1h",
-      },
-    );
+            expiresIn:
+              "1h",
+          },
+        );
 
-    await prisma.user.upsert({
-      where: {
-        id: organizerId,
-      },
+      clientTwoToken =
+        jwt.sign(
+          {
+            role: "CLIENT",
+          },
+          process.env.JWT_SECRET,
+          {
+            subject:
+              clientTwoId,
 
-      update: {},
+            expiresIn:
+              "1h",
+          },
+        );
 
-      create: {
-        id: organizerId,
-        name: "Organizador Concorrência",
-        email:
-          "organizer-concurrency-test@elite.dev",
-        passwordHash: "not-used",
-        role: "ORGANIZER",
-      },
-    });
+      await prisma.user.upsert({
+        where: {
+          id: organizerId,
+        },
 
-    await prisma.user.upsert({
-      where: {
-        id: clientOneId,
-      },
+        update: {},
 
-      update: {},
+        create: {
+          id: organizerId,
+          name:
+            "Organizador Concorrência",
 
-      create: {
-        id: clientOneId,
-        name: "Cliente Concorrência Um",
-        email:
-          "client-one-concurrency-test@elite.dev",
-        passwordHash: "not-used",
-        role: "CLIENT",
-      },
-    });
+          email:
+            "organizer-concurrency-test@elite.dev",
 
-    await prisma.user.upsert({
-      where: {
-        id: clientTwoId,
-      },
+          passwordHash:
+            "not-used",
 
-      update: {},
-
-      create: {
-        id: clientTwoId,
-        name: "Cliente Concorrência Dois",
-        email:
-          "client-two-concurrency-test@elite.dev",
-        passwordHash: "not-used",
-        role: "CLIENT",
-      },
-    });
-
-    const event =
-      await prisma.event.create({
-        data: {
-          organizerId,
-
-          externalProvider: "TEST",
-          externalId:
-            "reservation-concurrency-test",
-
-          title:
-            "Último Ingresso",
-
-          description:
-            "Evento para teste automatizado de concorrência.",
-
-          startsAt:
-            new Date(
-              Date.now() +
-                24 * 60 * 60 * 1000,
-            ),
-
-          venueName:
-            "Cinema Concorrência",
-
-          venueAddress:
-            "Rua Teste, 456",
-
-          capacity: 1,
-          availableTickets: 1,
-          priceCents: 3000,
-
-          status: "PUBLISHED",
+          role:
+            "ORGANIZER",
         },
       });
 
-    eventId = event.id;
-  });
-
-  afterAll(async () => {
-    await prisma.ticket.deleteMany({
-      where: {
-        eventId,
-      },
-    });
-
-    await prisma.reservation.deleteMany({
-      where: {
-        eventId,
-      },
-    });
-
-    await prisma.event.deleteMany({
-      where: {
-        id: eventId,
-      },
-    });
-
-    await prisma.user.deleteMany({
-      where: {
-        id: {
-          in: [
-            organizerId,
-            clientOneId,
-            clientTwoId,
-          ],
+      await prisma.user.upsert({
+        where: {
+          id: clientOneId,
         },
-      },
-    });
 
-    await prisma.$disconnect();
-  });
+        update: {},
 
-  it("deve permitir apenas uma reserva quando dois clientes disputam o último ingresso", async () => {
-    const createReservation = (
-      token: string,
-    ) =>
-      request(app)
-        .post("/reservations")
-        .set(
-          "Authorization",
-          `Bearer ${token}`,
-        )
-        .send({
-          eventId,
-          quantity: 1,
+        create: {
+          id: clientOneId,
+          name:
+            "Cliente Concorrência Um",
+
+          email:
+            "client-one-concurrency-test@elite.dev",
+
+          passwordHash:
+            "not-used",
+
+          role:
+            "CLIENT",
+        },
+      });
+
+      await prisma.user.upsert({
+        where: {
+          id: clientTwoId,
+        },
+
+        update: {},
+
+        create: {
+          id: clientTwoId,
+          name:
+            "Cliente Concorrência Dois",
+
+          email:
+            "client-two-concurrency-test@elite.dev",
+
+          passwordHash:
+            "not-used",
+
+          role:
+            "CLIENT",
+        },
+      });
+
+      const event =
+        await prisma.event.create({
+          data: {
+            organizerId,
+
+            externalProvider:
+              "TEST",
+
+            externalId:
+              "seat-concurrency-test",
+
+            title:
+              "Disputa pelo A01",
+
+            description:
+              "Evento para teste automatizado de concorrência por assento.",
+
+            startsAt:
+              new Date(
+                Date.now() +
+                  24 *
+                    60 *
+                    60 *
+                    1000,
+              ),
+
+            venueName:
+              "Cinema Concorrência",
+
+            venueAddress:
+              "Rua Teste, 456",
+
+            capacity: 1,
+
+            availableTickets:
+              1,
+
+            priceCents:
+              3000,
+
+            status:
+              "PUBLISHED",
+          },
         });
 
-    const [
-      firstResponse,
-      secondResponse,
-    ] = await Promise.all([
-      createReservation(
-        clientOneToken,
-      ),
+      eventId =
+        event.id;
 
-      createReservation(
-        clientTwoToken,
-      ),
-    ]);
+      const seat =
+        await prisma.seat.create({
+          data: {
+            eventId,
+            row: "A",
+            number: 1,
+            label: "A01",
+            type:
+              "STANDARD",
+            status:
+              "AVAILABLE",
+          },
+        });
 
-    const responses = [
-      firstResponse,
-      secondResponse,
-    ];
-
-    const successfulResponses =
-      responses.filter(
-        (response) =>
-          response.status === 201,
-      );
-
-    const conflictResponses =
-      responses.filter(
-        (response) =>
-          response.status === 409,
-      );
-
-    expect(
-      successfulResponses,
-    ).toHaveLength(1);
-
-    expect(
-      conflictResponses,
-    ).toHaveLength(1);
-
-    expect(
-      conflictResponses[0].body,
-    ).toEqual({
-      message:
-        "Quantidade de ingressos indisponível.",
-      code: "INSUFFICIENT_TICKETS",
+      seatId =
+        seat.id;
     });
 
-    const event =
-      await prisma.event.findUnique({
+    afterAll(async () => {
+      await prisma.ticket.deleteMany({
+        where: {
+          eventId,
+        },
+      });
+
+      await prisma.reservation.deleteMany({
+        where: {
+          eventId,
+        },
+      });
+
+      await prisma.event.deleteMany({
         where: {
           id: eventId,
         },
       });
 
-    expect(
-      event?.availableTickets,
-    ).toBe(0);
-
-    const reservations =
-      await prisma.reservation.findMany({
+      await prisma.user.deleteMany({
         where: {
-          eventId,
+          id: {
+            in: [
+              organizerId,
+              clientOneId,
+              clientTwoId,
+            ],
+          },
         },
       });
 
-    expect(
-      reservations,
-    ).toHaveLength(1);
+      await prisma.$disconnect();
+    });
 
-    expect(
-      reservations[0].quantity,
-    ).toBe(1);
-  });
-});
+    it(
+      "deve permitir apenas uma reserva quando dois clientes disputam o mesmo assento",
+      async () => {
+        const createReservation = (
+          token: string,
+        ) =>
+          request(app)
+            .post(
+              "/reservations",
+            )
+            .set(
+              "Authorization",
+              `Bearer ${token}`,
+            )
+            .send({
+              eventId,
+              seatIds: [
+                seatId,
+              ],
+            });
+
+        const [
+          firstResponse,
+          secondResponse,
+        ] =
+          await Promise.all([
+            createReservation(
+              clientOneToken,
+            ),
+
+            createReservation(
+              clientTwoToken,
+            ),
+          ]);
+
+        const responses = [
+          firstResponse,
+          secondResponse,
+        ];
+
+        const successfulResponses =
+          responses.filter(
+            (response) =>
+              response.status ===
+              201,
+          );
+
+        const conflictResponses =
+          responses.filter(
+            (response) =>
+              response.status ===
+              409,
+          );
+
+        expect(
+          successfulResponses,
+        ).toHaveLength(1);
+
+        expect(
+          conflictResponses,
+        ).toHaveLength(1);
+
+        expect(
+          conflictResponses[0]
+            .body,
+        ).toEqual({
+          message:
+            "Um ou mais assentos não estão mais disponíveis.",
+
+          code:
+            "SEAT_UNAVAILABLE",
+        });
+
+        const event =
+          await prisma.event.findUnique({
+            where: {
+              id: eventId,
+            },
+          });
+
+        expect(
+          event?.availableTickets,
+        ).toBe(0);
+
+        const reservations =
+          await prisma.reservation.findMany({
+            where: {
+              eventId,
+            },
+          });
+
+        expect(
+          reservations,
+        ).toHaveLength(1);
+
+        expect(
+          reservations[0]
+            .quantity,
+        ).toBe(1);
+
+        const seat =
+          await prisma.seat.findUnique({
+            where: {
+              id: seatId,
+            },
+          });
+
+        expect(
+          seat?.status,
+        ).toBe(
+          "RESERVED",
+        );
+
+        expect(
+          seat?.reservationId,
+        ).toBe(
+          reservations[0].id,
+        );
+      },
+    );
+  },
+);
