@@ -4,6 +4,7 @@ import { api } from "./api";
 
 import type {
   CreateEventResponse,
+  Event,
   OrganizerEvent,
 } from "../types/event";
 
@@ -33,6 +34,28 @@ function getRequestErrorMessage(
   }
 
   return fallbackMessage;
+}
+
+async function getEventById(
+  eventId: string,
+): Promise<Event> {
+  try {
+    const { data } = await api.get<Event>(
+      `/events/${eventId}`,
+    );
+
+    return data;
+  } catch (error) {
+    throw new Error(
+      getRequestErrorMessage(
+        error,
+        "Evento não encontrado.",
+      ),
+      {
+        cause: error,
+      },
+    );
+  }
 }
 
 async function getOrganizerEvents(): Promise<
@@ -108,6 +131,7 @@ async function updateEvent(
 }
 
 export const eventService = {
+  getEventById,
   getOrganizerEvents,
   createEvent,
   updateEvent,

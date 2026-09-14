@@ -1,44 +1,22 @@
-import {useEffect, useState, } from "react";
-import {Link, useNavigate, useParams, } from "react-router-dom";
-import axios from "axios";
+import { useState } from "react";
+import { motion } from "motion/react";
+import {
+  Link,
+  useNavigate,
+  useParams,
+} from "react-router-dom";
+
 import { LoadingState } from "../components/ui/LoadingState";
 import { useAuth } from "../context/useAuth";
-import { api } from "../services/api";
-import type { Event } from "../types/event";
-import { waitForMinimumDuration } from "../utils/minimum-delay";
+import { useEventDetails } from "../hooks/events/useEventDetails";
+import { useReservation } from "../hooks/reservations/useReservation";
+import { editorialEase } from "../lib/motion";
+import { formatLongDate } from "../utils/date";
+import { formatMoney } from "../utils/money";
 
-function formatPrice(
-  priceCents: number,
-) {
-  return new Intl.NumberFormat(
-    "pt-BR",
-    {
-      style: "currency",
-      currency: "BRL",
-    },
-  ).format(priceCents / 100);
-}
+import "../styles/event-details-v2.css";
 
-function formatDate(date: string) {
-  return new Intl.DateTimeFormat(
-    "pt-BR",
-    {
-      weekday: "long",
-      day: "2-digit",
-      month: "long",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    },
-  ).format(new Date(date));
-}
-
-type ReservationResponse = {
-  id: string;
-  quantity: number;
-  totalCents: number;
-  status: string;
-};
+const MAX_TICKETS_PER_RESERVATION = 6;
 
 export function EventDetailsPage() {
   const { id } = useParams<{
@@ -46,53 +24,36 @@ export function EventDetailsPage() {
   }>();
 
   const navigate = useNavigate();
-
   const { user } = useAuth();
-
-  const [event, setEvent] =
-    useState<Event | null>(null);
 
   const [quantity, setQuantity] =
     useState(1);
 
-  const [loading, setLoading] =
-    useState(true);
+  const eventQuery = useEventDetails(id);
+  const reservation = useReservation();
 
-  const [reserving, setReserving] =
-    useState(false);
+  const event = eventQuery.data;
 
-  const [error, setError] =
-    useState("");
+  function decreaseQuantity() {
+    setQuantity((current) =>
+      Math.max(1, current - 1),
+    );
+  }
 
-  useEffect(() => {
-    async function loadEvent() {
-      const startedAt =
-        performance.now();
-
-      try {
-        const { data } =
-          await api.get<Event>(
-            `/events/${id}`,
-          );
-
-        setEvent(data);
-      } catch {
-        setError(
-          "Evento não encontrado.",
-        );
-      } finally {
-        await waitForMinimumDuration(
-          startedAt,
-        );
-
-        setLoading(false);
-      }
+  function increaseQuantity() {
+    if (!event) {
+      return;
     }
 
-    if (id) {
-      void loadEvent();
-    }
-  }, [id]);
+    const limit = Math.min(
+      event.availableTickets,
+      MAX_TICKETS_PER_RESERVATION,
+    );
+
+    setQuantity((current) =>
+      Math.min(limit, current + 1),
+    );
+  }
 
   async function handleReservation() {
     if (!event) {
@@ -105,87 +66,60 @@ export function EventDetailsPage() {
     }
 
     if (user.role !== "CLIENT") {
-      setError(
-        "Entre com uma conta de cliente para reservar ingressos.",
-      );
-
       return;
     }
 
     try {
-      setReserving(true);
-      setError("");
-
-      const { data } =
-        await api.post<ReservationResponse>(
-          "/reservations",
-          {
-            eventId: event.id,
-            quantity,
-          },
-        );
+      const createdReservation =
+        await reservation.mutateAsync({
+          eventId: event.id,
+          quantity,
+        });
 
       navigate(
-        `/checkout/${data.id}`,
+        `/checkout/${createdReservation.id}`,
       );
-    } catch (requestError) {
-      if (
-        axios.isAxiosError(requestError)
-      ) {
-        setError(
-          requestError.response
-            ?.data?.message ??
-            "Não foi possível realizar a reserva.",
-        );
-      } else {
-        setError(
-          "Não foi possível realizar a reserva.",
-        );
-      }
-    } finally {
-      setReserving(false);
+    } catch {
+      // O erro é exposto pelo estado da mutation.
     }
   }
 
-  if (loading) {
+  if (eventQuery.isPending) {
     return (
-      <main className="event-details-page">
-        <header className="details-header">
-          <Link
-            to="/"
-            className="brand"
-          >
-            ELITE
-            <span>/TICKETS</span>
-          </Link>
+      <main className="event-details-v2-page">
+        <DetailsHeader />
 
-          <Link
-            to="/"
-            className="back-link"
-          >
-            ← PROGRAMAÇÃO
-          </Link>
-        </header>
-
-        <section className="event-details">
-          <LoadingState
-            variant="event"
-          />
+        <section className="event-details-v2-loading">
+          <LoadingState variant="event" />
         </section>
       </main>
     );
   }
 
-  if (!event) {
+  if (eventQuery.isError || !event) {
     return (
-      <main className="details-state">
-        <p>
-          EVENTO NÃO ENCONTRADO
-        </p>
+      <main className="event-details-v2-page">
+        <DetailsHeader />
 
-        <Link to="/">
-          Voltar para programação
-        </Link>
+        <section className="event-details-v2-state">
+          <p>PROGRAMAÇÃO / ERRO</p>
+
+          <h1>
+            SESSÃO
+            <br />
+            NÃO ENCONTRADA.
+          </h1>
+
+          <span>
+            {eventQuery.error instanceof Error
+              ? eventQuery.error.message
+              : "Não foi possível carregar esta sessão."}
+          </span>
+
+          <Link to="/">
+            ← VOLTAR PARA PROGRAMAÇÃO
+          </Link>
+        </section>
       </main>
     );
   }
@@ -193,174 +127,228 @@ export function EventDetailsPage() {
   const soldOut =
     event.availableTickets <= 0;
 
+  const totalCents =
+    event.priceCents * quantity;
+
+  const reservationError =
+    reservation.error instanceof Error
+      ? reservation.error.message
+      : "";
+
   return (
-    <main className="event-details-page">
-      <header className="details-header">
-        <Link
-          to="/"
-          className="brand"
-        >
-          ELITE
-          <span>/TICKETS</span>
-        </Link>
+    <main className="event-details-v2-page">
+      <DetailsHeader />
 
-        <Link
-          to="/"
-          className="back-link"
-        >
-          ← PROGRAMAÇÃO
-        </Link>
-      </header>
-
-      <section className="event-details">
-        <div className="details-poster">
-          {event.imageUrl ? (
-            <img
-              src={event.imageUrl}
-              alt={`Pôster de ${event.title}`}
-            />
-          ) : (
-            <div className="poster-placeholder">
-              <span>
-                SEM PÔSTER
-              </span>
-            </div>
-          )}
-        </div>
-
-        <div className="details-content">
-          <p className="details-date">
-            {formatDate(
-              event.startsAt,
-            )}
-          </p>
-
-          <h1>{event.title}</h1>
-
-          <p className="details-description">
-            {event.description ||
-              "Informações da sessão não disponíveis."}
-          </p>
-
-          <div className="details-location">
-            <span>ONDE</span>
-
+      <motion.section
+        className="event-details-v2-layout"
+        initial={{
+          opacity: 0,
+          y: 24,
+        }}
+        animate={{
+          opacity: 1,
+          y: 0,
+          transition: {
+            duration: 0.65,
+            ease: editorialEase,
+          },
+        }}
+      >
+        <aside className="event-details-v2-visual">
+          <div className="event-details-v2-index">
+            <span>EXIBIÇÃO</span>
             <strong>
-              {event.venueName}
+              / {event.id.slice(0, 4)}
             </strong>
+          </div>
 
-            {event.venueAddress && (
-              <p>
-                {event.venueAddress}
-              </p>
+          <div className="event-details-v2-poster">
+            {event.imageUrl ? (
+              <img
+                src={event.imageUrl}
+                alt={`Pôster de ${event.title}`}
+              />
+            ) : (
+              <div className="event-details-v2-poster-empty">
+                <span>ELITE / TICKETS</span>
+                <strong>SEM PÔSTER</strong>
+              </div>
             )}
           </div>
 
-          <div className="ticket-selector">
-            <div className="ticket-selector-heading">
+          <div className="event-details-v2-poster-meta">
+            <span>SESSÃO PROGRAMADA</span>
+
+            <span>
+              {String(
+                event.availableTickets,
+              ).padStart(2, "0")}{" "}
+              LUGARES
+            </span>
+          </div>
+        </aside>
+
+        <div className="event-details-v2-content">
+          <div className="event-details-v2-heading">
+            <p>
+              {formatLongDate(
+                event.startsAt,
+              )}
+            </p>
+
+            <div className="event-details-v2-title-mask">
+              <h1>{event.title}</h1>
+            </div>
+          </div>
+
+          <div className="event-details-v2-information">
+            <div className="event-details-v2-description">
+              <span>SOBRE / SESSÃO</span>
+
+              <p>
+                {event.description ||
+                  "Informações adicionais desta sessão não estão disponíveis."}
+              </p>
+            </div>
+
+            <div className="event-details-v2-location">
               <div>
-                <span>
-                  INGRESSO / PISTA
-                </span>
+                <span>LOCAL</span>
+                <strong>
+                  {event.venueName}
+                </strong>
+              </div>
+
+              {event.venueAddress && (
+                <p>
+                  {event.venueAddress}
+                </p>
+              )}
+            </div>
+          </div>
+
+          <section className="event-details-v2-purchase">
+            <div className="event-details-v2-purchase-heading">
+              <div>
+                <span>INGRESSOS / SESSÃO</span>
 
                 <strong>
-                  {formatPrice(
+                  {formatMoney(
                     event.priceCents,
                   )}
                 </strong>
               </div>
 
               <p>
-                {
-                  event.availableTickets
-                }{" "}
-                disponíveis
+                {soldOut
+                  ? "SESSÃO ESGOTADA"
+                  : `${event.availableTickets} DISPONÍVEIS`}
               </p>
             </div>
 
-            {!soldOut && (
+            {soldOut ? (
+              <div className="event-details-v2-sold-out">
+                <span>ESGOTADO / 00</span>
+
+                <strong>
+                  NÃO HÁ MAIS
+                  <br />
+                  LUGARES.
+                </strong>
+
+                <p>
+                  Todos os ingressos desta
+                  sessão já foram reservados.
+                </p>
+              </div>
+            ) : (
               <>
-                <div className="quantity-control">
-                  <button
-                    type="button"
-                    aria-label="Diminuir quantidade"
-                    onClick={() =>
-                      setQuantity(
-                        (current) =>
-                          Math.max(
-                            1,
-                            current -
-                              1,
-                          ),
-                      )
-                    }
-                  >
-                    −
-                  </button>
+                <div className="event-details-v2-reservation">
+                  <div className="event-details-v2-quantity">
+                    <span>QUANTIDADE</span>
 
-                  <strong>
-                    {quantity}
-                  </strong>
+                    <div>
+                      <button
+                        type="button"
+                        aria-label="Diminuir quantidade"
+                        disabled={
+                          quantity <= 1
+                        }
+                        onClick={
+                          decreaseQuantity
+                        }
+                      >
+                        −
+                      </button>
 
-                  <button
-                    type="button"
-                    aria-label="Aumentar quantidade"
-                    onClick={() =>
-                      setQuantity(
-                        (current) =>
+                      <strong>
+                        {String(
+                          quantity,
+                        ).padStart(
+                          2,
+                          "0",
+                        )}
+                      </strong>
+
+                      <button
+                        type="button"
+                        aria-label="Aumentar quantidade"
+                        disabled={
+                          quantity >=
                           Math.min(
-                            Math.min(
-                              event.availableTickets,
-                              6,
-                            ),
-                            current +
-                              1,
-                          ),
-                      )
-                    }
-                  >
-                    +
-                  </button>
+                            event.availableTickets,
+                            MAX_TICKETS_PER_RESERVATION,
+                          )
+                        }
+                        onClick={
+                          increaseQuantity
+                        }
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="event-details-v2-total">
+                    <span>TOTAL</span>
+
+                    <strong>
+                      {formatMoney(
+                        totalCents,
+                      )}
+                    </strong>
+                  </div>
                 </div>
 
-                <div className="reservation-total">
-                  <span>TOTAL</span>
-
-                  <strong>
-                    {formatPrice(
-                      event.priceCents *
-                        quantity,
-                    )}
-                  </strong>
-                </div>
-
-                {error && (
-                  <p className="details-error">
-                    {error}
+                {reservationError && (
+                  <p className="event-details-v2-error">
+                    {reservationError}
                   </p>
                 )}
 
                 {!user && (
-                  <div className="login-hint">
-                    <span>
-                      QUER RESERVAR?
-                    </span>
+                  <div className="event-details-v2-access">
+                    <div>
+                      <span>
+                        AUTENTICAÇÃO /
+                        NECESSÁRIA
+                      </span>
 
-                    <p>
-                      Entre como cliente
-                      para continuar com a
-                      compra.
-                    </p>
+                      <p>
+                        Entre como cliente
+                        para continuar com a
+                        reserva.
+                      </p>
+                    </div>
 
                     <button
                       type="button"
                       onClick={() =>
-                        navigate(
-                          "/login",
-                        )
+                        navigate("/login")
                       }
                     >
-                      FAZER LOGIN →
+                      <span>FAZER LOGIN</span>
+                      <span>↗</span>
                     </button>
                   </div>
                 )}
@@ -368,18 +356,20 @@ export function EventDetailsPage() {
                 {user &&
                   user.role !==
                     "CLIENT" && (
-                    <div className="login-hint">
-                      <span>
-                        CONTA DE{" "}
-                        {user.role}
-                      </span>
+                    <div className="event-details-v2-access">
+                      <div>
+                        <span>
+                          CONTA /{" "}
+                          {user.role}
+                        </span>
 
-                      <p>
-                        Para comprar
-                        ingressos, entre
-                        com uma conta de
-                        cliente.
-                      </p>
+                        <p>
+                          A compra de
+                          ingressos é
+                          exclusiva para
+                          contas de cliente.
+                        </p>
+                      </div>
 
                       <button
                         type="button"
@@ -389,7 +379,11 @@ export function EventDetailsPage() {
                           )
                         }
                       >
-                        TROCAR DE CONTA →
+                        <span>
+                          TROCAR CONTA
+                        </span>
+
+                        <span>↗</span>
                       </button>
                     </div>
                   )}
@@ -398,40 +392,52 @@ export function EventDetailsPage() {
                   "CLIENT" && (
                   <button
                     type="button"
-                    className="reserve-button"
+                    className="event-details-v2-reserve"
                     disabled={
-                      reserving
+                      reservation.isPending
                     }
                     onClick={
                       handleReservation
                     }
                   >
                     <span>
-                      {reserving
+                      {reservation.isPending
                         ? "RESERVANDO..."
                         : "RESERVAR INGRESSOS"}
                     </span>
 
-                    <span>→</span>
+                    <span>↗</span>
                   </button>
                 )}
               </>
             )}
-
-            {soldOut && (
-              <div className="sold-out">
-                <span>ESGOTADO</span>
-
-                <p>
-                  Não há mais ingressos
-                  disponíveis para esta
-                  sessão.
-                </p>
-              </div>
-            )}
-          </div>
+          </section>
         </div>
-      </section>
+      </motion.section>
     </main>
+  );
+}
+
+function DetailsHeader() {
+  return (
+    <header className="event-details-v2-header">
+      <Link
+        to="/"
+        className="brand"
+      >
+        ELITE
+        <span>/TICKETS</span>
+      </Link>
+
+      <div className="event-details-v2-header-meta">
+        <span>
+          PROGRAMAÇÃO / DETALHES
+        </span>
+
+        <Link to="/">
+          ← VOLTAR
+        </Link>
+      </div>
+    </header>
   );
 }
