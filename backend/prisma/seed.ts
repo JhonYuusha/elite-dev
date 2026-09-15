@@ -91,6 +91,80 @@ async function main() {
     });
   }
 
+  const products = [
+    {
+      slug: "pipoca-classica",
+      name: "Pipoca Clássica",
+      description: "Pipoca tradicional para acompanhar a sessão.",
+      category: "POPCORN" as const,
+      priceCents: 1800,
+      active: true,
+      sortOrder: 1,
+    },
+    {
+      slug: "pipoca-grande",
+      name: "Pipoca Grande",
+      description: "Porção grande de pipoca para a sessão.",
+      category: "POPCORN" as const,
+      priceCents: 2400,
+      active: true,
+      sortOrder: 2,
+    },
+    {
+      slug: "refrigerante",
+      name: "Refrigerante",
+      description: "Refrigerante gelado para acompanhar o filme.",
+      category: "DRINK" as const,
+      priceCents: 1200,
+      active: true,
+      sortOrder: 3,
+    },
+    {
+      slug: "agua",
+      name: "Água",
+      description: "Água mineral.",
+      category: "DRINK" as const,
+      priceCents: 700,
+      active: true,
+      sortOrder: 4,
+    },
+    {
+      slug: "combo-cinema",
+      name: "Combo Cinema",
+      description: "Pipoca e refrigerante para uma pessoa.",
+      category: "COMBO" as const,
+      priceCents: 3900,
+      active: true,
+      sortOrder: 5,
+    },
+    {
+      slug: "combo-dupla",
+      name: "Combo Dupla",
+      description: "Combo para compartilhar durante a sessão.",
+      category: "COMBO" as const,
+      priceCents: 5200,
+      active: true,
+      sortOrder: 6,
+    },
+  ];
+
+  for (const product of products) {
+    await prisma.product.upsert({
+      where: {
+        slug: product.slug,
+      },
+      update: {
+        name: product.name,
+        description: product.description,
+        category: product.category,
+        priceCents: product.priceCents,
+        active: product.active,
+        sortOrder: product.sortOrder,
+      },
+      create: product,
+    });
+  }
+
   console.log("🌱 Seed concluído.");
   console.log("");
   console.log("Usuários de teste:");
@@ -100,6 +174,8 @@ async function main() {
   console.log("portaria@elitedev.test");
   console.log("");
   console.log("Senha: EliteDev123!");
+  console.log("");
+  console.log(`${products.length} produtos da bomboniere sincronizados.`);
 }
 
 main()
