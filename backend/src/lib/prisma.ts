@@ -8,6 +8,20 @@ if (!connectionString) {
   throw new Error("DATABASE_URL não definida.");
 }
 
-const adapter = new PrismaPg({ connectionString });
+const databaseUrl = new URL(connectionString);
+const isLocalDatabase =
+  databaseUrl.hostname === "localhost" ||
+  databaseUrl.hostname === "127.0.0.1";
+
+const adapter = new PrismaPg({
+  connectionString,
+  ...(isLocalDatabase
+    ? {}
+    : {
+        ssl: {
+          rejectUnauthorized: false,
+        },
+      }),
+});
 
 export const prisma = new PrismaClient({ adapter });
